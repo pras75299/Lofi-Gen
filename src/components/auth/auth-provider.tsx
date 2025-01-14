@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { User } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 
 type AuthContextType = {
   user: User | null;
@@ -25,6 +25,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user && window.location.hash.includes("access_token")) {
+        // Clear the hash and navigate to /create
+        window.location.hash = "";
+        window.location.href = "/create";
+      }
       setUser(session?.user ?? null);
       setLoading(false);
     });
@@ -46,7 +51,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };

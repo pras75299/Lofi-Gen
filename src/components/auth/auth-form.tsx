@@ -1,45 +1,51 @@
-import React, { useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { Loader2, AlertCircle, Github, Mail } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { Loader2, AlertCircle, Github, Mail } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export const AuthForm = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const navigate = useNavigate();
 
-  const handleSocialLogin = async (provider: 'github' | 'google') => {
+  const handleSocialLogin = async (provider: "github" | "google") => {
     setLoading(true);
     setError(null);
+    const currentUrl = window.location.origin;
 
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/create`,
+          redirectTo: `${currentUrl}/create`,
+          skipBrowserRedirect: false,
           queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
+            access_type: "offline",
+            prompt: "consent",
           },
         },
       });
+
       if (error) {
         throw error;
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to connect with social provider');
-    } finally {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to connect with social provider"
+      );
       setLoading(false);
     }
   };
 
   const validatePassword = (password: string) => {
     if (password.length < 6) {
-      return 'Password must be at least 6 characters long';
+      return "Password must be at least 6 characters long";
     }
     return null;
   };
@@ -58,20 +64,20 @@ export const AuthForm = () => {
     }
 
     try {
-      if (mode === 'signup') {
+      if (mode === "signup") {
         const { error } = await supabase.auth.signUp({
           email,
           password,
         });
         if (error) throw error;
-        setError('Check your email to confirm your account');
+        setError("Check your email to confirm your account");
       } else {
         // Clear any previous errors
         setError(null);
         setValidationError(null);
-        
+
         if (!email || !password) {
-          throw new Error('Please enter both email and password');
+          throw new Error("Please enter both email and password");
         }
 
         const { error } = await supabase.auth.signInWithPassword({
@@ -79,22 +85,24 @@ export const AuthForm = () => {
           password,
         });
         if (error) throw error;
-        navigate('/create');
+        navigate("/create");
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      
+      const errorMessage =
+        err instanceof Error ? err.message : "An error occurred";
+
       // Handle specific error cases
-      if (errorMessage.includes('invalid_credentials')) {
-        setError('Invalid email or password');
-      } else if (errorMessage.includes('user_already_exists')) {
-        setError('An account with this email already exists');
-      } else if (errorMessage.includes('weak_password')) {
-        setValidationError('Password is too weak. Please use at least 6 characters');
+      if (errorMessage.includes("invalid_credentials")) {
+        setError("Invalid email or password");
+      } else if (errorMessage.includes("user_already_exists")) {
+        setError("An account with this email already exists");
+      } else if (errorMessage.includes("weak_password")) {
+        setValidationError(
+          "Password is too weak. Please use at least 6 characters"
+        );
       } else {
         setError(errorMessage);
       }
-      
     } finally {
       setLoading(false);
     }
@@ -103,21 +111,21 @@ export const AuthForm = () => {
   return (
     <div className="w-full max-w-md mx-auto bg-[#FDF7F4] p-8 rounded-xl shadow-2xl border border-[#997C70]/20">
       <h2 className="text-2xl font-bold text-[#685752] mb-2 text-center">
-        {mode === 'signin' ? 'Sign In' : 'Create Account'}
+        {mode === "signin" ? "Sign In" : "Create Account"}
       </h2>
       <p className="text-sm text-[#997C70] text-center mb-8">
         Create amazing Lo-Fi tracks with our tools
       </p>
-      
+
       {error && (
         <div className="mb-4 p-4 bg-red-500/10 border border-red-500 rounded text-red-500 text-sm">
           <div className="flex items-center gap-2 text-red-500">
             <AlertCircle className="h-4 w-4" />
-          {error}
+            {error}
           </div>
         </div>
       )}
-      
+
       {validationError && (
         <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500 rounded text-sm">
           <div className="flex items-center gap-2 text-yellow-500">
@@ -130,7 +138,7 @@ export const AuthForm = () => {
       <div className="space-y-4">
         <button
           disabled={loading}
-          onClick={() => handleSocialLogin('github')}
+          onClick={() => handleSocialLogin("github")}
           className="w-full px-4 py-3 bg-[#171515] text-white font-medium rounded-lg transition-all hover:bg-[#2b2b2b] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transform hover:translate-y-[-1px]"
         >
           {loading ? (
@@ -146,14 +154,19 @@ export const AuthForm = () => {
             <div className="w-full border-t border-[#997C70]/20"></div>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-[#FDF7F4] text-[#997C70]">Or use email</span>
+            <span className="px-2 bg-[#FDF7F4] text-[#997C70]">
+              Or use email
+            </span>
           </div>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4 mt-6">
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-[#685752] mb-1">
+          <label
+            htmlFor="email"
+            className="block text-sm font-medium text-[#685752] mb-1"
+          >
             Email
           </label>
           <input
@@ -168,7 +181,10 @@ export const AuthForm = () => {
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-[#685752] mb-1">
+          <label
+            htmlFor="password"
+            className="block text-sm font-medium text-[#685752] mb-1"
+          >
             Password
           </label>
           <input
@@ -190,20 +206,20 @@ export const AuthForm = () => {
         >
           {loading ? (
             <Loader2 className="w-5 h-5 animate-spin" />
-          ) : mode === 'signin' ? (
-            'Sign In'
+          ) : mode === "signin" ? (
+            "Sign In"
           ) : (
-            'Create Account'
+            "Create Account"
           )}
         </button>
       </form>
 
       <p className="mt-6 text-sm text-[#997C70] text-center">
-        {mode === 'signin' ? (
+        {mode === "signin" ? (
           <>
-            Don't have an account?{' '}
+            Don't have an account?{" "}
             <button
-              onClick={() => setMode('signup')}
+              onClick={() => setMode("signup")}
               className="text-[#8EB486] hover:text-[#997C70] font-medium transition-colors"
             >
               Sign up
@@ -211,9 +227,9 @@ export const AuthForm = () => {
           </>
         ) : (
           <>
-            Already have an account?{' '}
+            Already have an account?{" "}
             <button
-              onClick={() => setMode('signin')}
+              onClick={() => setMode("signin")}
               className="text-[#8EB486] hover:text-[#997C70] font-medium"
             >
               Sign in
