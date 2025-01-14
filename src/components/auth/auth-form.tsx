@@ -108,15 +108,6 @@ export const AuthForm = () => {
     }
   };
 
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (hash.includes("access_token")) {
-      // Clean the hash and extract the session
-      window.location.hash = ""; // Clear the hash fragment
-      window.location.href = "/create"; // Navigate to the intended route
-    }
-  }, []);
-
   return (
     <div className="w-full max-w-md mx-auto bg-[#FDF7F4] p-8 rounded-xl shadow-2xl border border-[#997C70]/20">
       <h2 className="text-2xl font-bold text-[#685752] mb-2 text-center">

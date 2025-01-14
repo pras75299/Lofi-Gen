@@ -37,6 +37,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.includes("access_token")) {
+      const params = new URLSearchParams(hash.substring(1)); // Remove the '#' and parse params
+      const accessToken = params.get("access_token");
+
+      // Optionally, you can store the token if needed for your app's context
+      if (accessToken) {
+        // Process the token if necessary
+      }
+
+      // Clear the hash fragment from the URL
+      window.location.hash = "";
+    }
+  }, []);
+
   const signOut = async () => {
     await supabase.auth.signOut();
   };
