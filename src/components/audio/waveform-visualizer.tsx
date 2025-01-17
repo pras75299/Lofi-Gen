@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import WaveSurfer from 'wavesurfer.js';
+import React, { useEffect, useRef } from "react";
+import WaveSurfer from "wavesurfer.js";
 
 interface WaveformVisualizerProps {
   audioFile: File;
@@ -13,8 +13,8 @@ export const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
   audioFile,
   onReady,
   height = 100,
-  waveColor = '#5D8736',
-  progressColor = '#4A6C2B'
+  waveColor = "#5D8736",
+  progressColor = "#4A6C2B",
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const wavesurfer = useRef<WaveSurfer | null>(null);
@@ -27,11 +27,10 @@ export const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
       height,
       waveColor,
       progressColor,
-      responsive: true,
       cursorWidth: 0,
       barWidth: 2,
       barGap: 1,
-      barRadius: 2
+      barRadius: 2,
     });
 
     const reader = new FileReader();
