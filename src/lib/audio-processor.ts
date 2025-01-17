@@ -14,6 +14,8 @@ export class LoFiProcessor {
   private panner: Tone.Panner3D;
   private compressor: Tone.Compressor;
   private pitchShift: Tone.PitchShift;
+  private harmonicOscillator: Tone.Oscillator;
+  private isolateVocals: boolean = false;
 
   constructor() {
     // Initialize effects
@@ -81,6 +83,11 @@ export class LoFiProcessor {
       delayTime: 0,
       feedback: 0
     });
+    this.harmonicOscillator = new Tone.Oscillator({
+      frequency: 440, // Base frequency
+      type: 'sine', // Harmonic waveform
+      volume: -20,  // Default volume for harmonics
+    });
 
     this.gainNode = new Tone.Gain(0.8);
 
@@ -88,6 +95,8 @@ export class LoFiProcessor {
     this.vinylNoise.connect(this.gainNode);
     this.tapeHiss.connect(this.gainNode);
     this.gainNode.toDestination();
+
+    this.harmonicOscillator.connect(this.gainNode);
   }
 
   async loadFile(file: File): Promise<void> {
@@ -139,12 +148,24 @@ export class LoFiProcessor {
     spatialZ: number;
     compression: number;
     pitchShift: number;
+    vocalReduction: number;
+    harmonics: number;
   }) {
     this.vinylNoise.volume.value = effects.vinylCrackle * -30 - 40;
     this.tapeHiss.volume.value = effects.tapeHiss * -30 - 50;
-    this.bitCrusher.bits = Math.floor(effects.bitCrush * 7 + 1);
+    this.bitCrusher.set({ bits: Math.floor(effects.bitCrush * 7 + 1) });
     this.reverb.wet.value = effects.reverb;
     this.lowPass.frequency.value = effects.lowPass * 3000 + 500;
+    this.midEQ.low.value = -effects.vocalReduction * 12;
+    this.midEQ.high.value = -effects.vocalReduction * 8;
+    this.midEQ.mid.value = effects.vocalReduction * 6;
+
+    this.harmonicOscillator.volume.value = effects.harmonics * -30 - 20; // Adjust harmonic intensity
+    if (effects.harmonics > 0 && !this.harmonicOscillator.state) {
+      this.harmonicOscillator.start();
+    } else if (effects.harmonics === 0 && this.harmonicOscillator.state) {
+      this.harmonicOscillator.stop();
+    }
     
     if (this.player) {
       this.player.playbackRate = effects.tempo;
@@ -251,7 +272,7 @@ export class LoFiProcessor {
       setTimeout(() => {
         mediaRecorder.stop();
         this.stop();
-      }, this.player?.buffer.duration * 1000);
+      }, this.player ? this.player.buffer.duration * 1000 : 0);
     });
   }
 }
