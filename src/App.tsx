@@ -1,13 +1,13 @@
-import React from 'react';
-import { MeteorPreview } from './components/ui/meteor-preview';
-import { MovingBorder } from './components/ui/moving-border';
-import { TestimonialCard } from './components/testimonial-card';
-import { FeatureCard } from './components/feature-card';
-import { InfiniteMovingCards } from './components/ui/infinite-moving-cards';
-import { Upload, Music, Sliders, ArrowRight, Music2 } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { AuthForm } from './components/auth/auth-form';
-import { useAuth } from './components/auth/auth-provider';
+import React from "react";
+import { MeteorPreview } from "./components/ui/meteor-preview";
+import { MovingBorder } from "./components/ui/moving-border";
+import { TestimonialCard } from "./components/testimonial-card";
+import { FeatureCard } from "./components/feature-card";
+import { InfiniteMovingCards } from "./components/ui/infinite-moving-cards";
+import { Upload, Music, Sliders, ArrowRight, Music2 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { AuthForm } from "./components/auth/auth-form";
+import { useAuth } from "./components/auth/auth-provider";
 
 function App() {
   const { user, signOut } = useAuth();
@@ -16,39 +16,48 @@ function App() {
   const features = [
     {
       icon: Upload,
-      title: 'Seamless Uploads',
-      description: 'Drag and drop your tracks or browse your files. Support for all major audio formats.',
+      title: "Seamless Uploads",
+      description:
+        "Drag and drop your tracks or browse your files. Support for all major audio formats.",
     },
     {
       icon: Music,
-      title: 'Real-Time Lo-Fi Effects',
-      description: 'Apply vinyl crackle, tape hiss, and other authentic Lo-Fi effects in real-time.',
+      title: "Real-Time Lo-Fi Effects",
+      description:
+        "Apply vinyl crackle, tape hiss, and other authentic Lo-Fi effects in real-time.",
     },
     {
       icon: Sliders,
-      title: 'Customizable Sound Settings',
-      description: 'Fine-tune every aspect of your Lo-Fi sound with intuitive controls.',
+      title: "Customizable Sound Settings",
+      description:
+        "Fine-tune every aspect of your Lo-Fi sound with intuitive controls.",
     },
   ];
 
   const testimonials = [
     {
-      name: 'Sarah Chen',
-      title: 'Music Producer',
-      image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop',
-      quote: 'This tool has completely transformed my production workflow. The Lo-Fi effects are incredibly authentic!',
+      name: "Sarah Chen",
+      title: "Music Producer",
+      image:
+        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop",
+      quote:
+        "This tool has completely transformed my production workflow. The Lo-Fi effects are incredibly authentic!",
     },
     {
-      name: 'Marcus Rodriguez',
-      title: 'Bedroom Producer',
-      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop',
-      quote: 'Finally found the perfect way to give my tracks that cozy Lo-Fi feeling. Absolutely love it!',
+      name: "Marcus Rodriguez",
+      title: "Bedroom Producer",
+      image:
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop",
+      quote:
+        "Finally found the perfect way to give my tracks that cozy Lo-Fi feeling. Absolutely love it!",
     },
     {
-      name: 'Emily Taylor',
-      title: 'Content Creator',
-      image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop',
-      quote: 'The ease of use and quality of the output is incredible. My YouTube videos sound so much better now.',
+      name: "Emily Taylor",
+      title: "Content Creator",
+      image:
+        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop",
+      quote:
+        "The ease of use and quality of the output is incredible. My YouTube videos sound so much better now.",
     },
   ];
 
@@ -58,7 +67,10 @@ function App() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#FDF7F4]/80 backdrop-blur-sm border-b border-[#997C70]/20">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            <a href="/" className="flex items-center space-x-2 text-[#8EB486] hover:text-[#997C70] transition-colors">
+            <a
+              href="/"
+              className="flex items-center space-x-2 text-[#8EB486] hover:text-[#997C70] transition-colors"
+            >
               <Music2 className="w-6 h-6" />
               <span className="text-xl font-bold">LOFIGEN</span>
             </a>
@@ -105,7 +117,7 @@ function App() {
       <div className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
         <MeteorPreview />
         <div className="relative z-10 container mx-auto px-4 py-32 text-center">
-          <motion.h1 
+          <motion.h1
             className="text-5xl md:text-7xl font-bold mb-6 text-[#8EB486]"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -115,7 +127,6 @@ function App() {
           </motion.h1>
           <motion.p
             className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto"
-            className="text-xl text-[#997C70] mb-12 max-w-2xl mx-auto"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
@@ -124,7 +135,7 @@ function App() {
           </motion.p>
           {!user && (
             <div className="inline-block">
-              <button 
+              <button
                 onClick={() => setShowAuthForm(true)}
                 className="relative px-8 py-4 bg-[#8EB486] hover:bg-[#997C70] text-white font-medium rounded-md transition-colors group shadow-lg"
               >
@@ -139,7 +150,9 @@ function App() {
       {/* Features Section */}
       <div className="py-24 bg-[#4A6C2B]">
         <div className="container mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center mb-16 text-white">Core Features</h2>
+          <h2 className="text-4xl font-bold text-center mb-16 text-white">
+            Core Features
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {features.map((feature, index) => (
               <FeatureCard key={index} {...feature} />
@@ -151,22 +164,28 @@ function App() {
       {/* Testimonials Section */}
       <div className="py-24">
         <div className="container mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center mb-8">What Our Users Say</h2>
+          <h2 className="text-4xl font-bold text-center mb-8">
+            What Our Users Say
+          </h2>
           <InfiniteMovingCards
             items={[
               ...testimonials,
               {
-                name: 'Alex Kim',
-                title: 'Music Student',
-                image: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&h=400&fit=crop',
-                quote: 'The Lo-Fi effects are so authentic, it\'s exactly what I needed for my study music playlist.',
+                name: "Alex Kim",
+                title: "Music Student",
+                image:
+                  "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&h=400&fit=crop",
+                quote:
+                  "The Lo-Fi effects are so authentic, it's exactly what I needed for my study music playlist.",
               },
               {
-                name: 'Jordan Lee',
-                title: 'Indie Artist',
-                image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop',
-                quote: 'This tool has become an essential part of my production process. The results are amazing!',
-              }
+                name: "Jordan Lee",
+                title: "Indie Artist",
+                image:
+                  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop",
+                quote:
+                  "This tool has become an essential part of my production process. The results are amazing!",
+              },
             ]}
             speed="slow"
             className="py-8"
@@ -177,9 +196,11 @@ function App() {
       {/* CTA Section */}
       <div className="py-24 bg-[#997C70]" id="cta">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-4xl font-bold mb-6 text-white">Join the Lo-Fi Revolution</h2>
+          <h2 className="text-4xl font-bold mb-6 text-white">
+            Join the Lo-Fi Revolution
+          </h2>
           <p className="text-xl text-white/80 mb-12 max-w-2xl mx-auto">
-            {user 
+            {user
               ? "Welcome back! Ready to create more Lo-Fi masterpieces?"
               : "Start creating your own Lo-Fi masterpieces today. Sign up now and get access to all our premium features."}
           </p>
@@ -215,35 +236,103 @@ function App() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <h3 className="text-lg font-semibold mb-4">Lo-Fi Generator</h3>
-              <p className="text-[#997C70]">Transform your music into Lo-Fi masterpieces.</p>
+              <p className="text-[#997C70]">
+                Transform your music into Lo-Fi masterpieces.
+              </p>
             </div>
             <div>
               <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
               <ul className="space-y-2 text-[#997C70]">
-                <li><a href="#features" className="hover:text-[#8EB486] transition-colors">Features</a></li>
-                <li><a href="#pricing" className="hover:text-[#8EB486] transition-colors">Pricing</a></li>
-                <li><a href="#faq" className="hover:text-[#8EB486] transition-colors">FAQ</a></li>
+                <li>
+                  <a
+                    href="#features"
+                    className="hover:text-[#8EB486] transition-colors"
+                  >
+                    Features
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#pricing"
+                    className="hover:text-[#8EB486] transition-colors"
+                  >
+                    Pricing
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#faq"
+                    className="hover:text-[#8EB486] transition-colors"
+                  >
+                    FAQ
+                  </a>
+                </li>
               </ul>
             </div>
             <div>
               <h4 className="text-lg font-semibold mb-4">Support</h4>
               <ul className="space-y-2 text-[#997C70]">
-                <li><a href="#contact" className="hover:text-[#8EB486] transition-colors">Contact</a></li>
-                <li><a href="#docs" className="hover:text-[#8EB486] transition-colors">Documentation</a></li>
-                <li><a href="#terms" className="hover:text-[#8EB486] transition-colors">Terms of Service</a></li>
+                <li>
+                  <a
+                    href="#contact"
+                    className="hover:text-[#8EB486] transition-colors"
+                  >
+                    Contact
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#docs"
+                    className="hover:text-[#8EB486] transition-colors"
+                  >
+                    Documentation
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#terms"
+                    className="hover:text-[#8EB486] transition-colors"
+                  >
+                    Terms of Service
+                  </a>
+                </li>
               </ul>
             </div>
             <div>
               <h4 className="text-lg font-semibold mb-4">Connect</h4>
               <ul className="space-y-2 text-[#997C70]">
-                <li><a href="#twitter" className="hover:text-[#8EB486] transition-colors">Twitter</a></li>
-                <li><a href="#discord" className="hover:text-[#8EB486] transition-colors">Discord</a></li>
-                <li><a href="#github" className="hover:text-[#8EB486] transition-colors">GitHub</a></li>
+                <li>
+                  <a
+                    href="#twitter"
+                    className="hover:text-[#8EB486] transition-colors"
+                  >
+                    Twitter
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#discord"
+                    className="hover:text-[#8EB486] transition-colors"
+                  >
+                    Discord
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#github"
+                    className="hover:text-[#8EB486] transition-colors"
+                  >
+                    GitHub
+                  </a>
+                </li>
               </ul>
             </div>
           </div>
           <div className="mt-12 pt-8 border-t border-[#997C70]/20 text-center text-[#997C70]">
-            <p>&copy; {new Date().getFullYear()} Lo-Fi Generator. All rights reserved.</p>
+            <p>
+              &copy; {new Date().getFullYear()} Lo-Fi Generator. All rights
+              reserved.
+            </p>
           </div>
         </div>
       </footer>
