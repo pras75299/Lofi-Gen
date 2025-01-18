@@ -1,10 +1,17 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, Music2, Settings2, Music } from "lucide-react";
 import { WaveformVisualizer } from "@/components/audio/waveform-visualizer";
 import { LoFiProcessor } from "@/lib/audio-processor";
 import { supabase } from "@/lib/supabase";
 import { Slider } from "@/components/ui/slider";
 import { useAuth } from "@/components/auth/auth-provider";
+
+interface ConvertedFile {
+  id: string;
+  originalName: string;
+  convertedUrl: string;
+  createdAt: Date;
+}
 
 export const CreatePage = () => {
   const { user, signOut } = useAuth();
@@ -15,6 +22,7 @@ export const CreatePage = () => {
   const processorRef = useRef<LoFiProcessor | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [convertedFiles, setConvertedFiles] = useState<ConvertedFile[]>([]);
 
   const defaultEffects = {
     vinylCrackle: 1,
@@ -37,6 +45,57 @@ export const CreatePage = () => {
     ...defaultEffects,
   });
 
+  const fetchConvertedFiles = useCallback(async () => {
+    try {
+      if (!user) {
+        setError("User is not authenticated.");
+        return;
+      }
+
+      // Fetch files from the 'processed' folder
+      const { data, error } = await supabase.storage
+        .from("lofi-tracks")
+        .list("processed", {
+          limit: 100,
+          offset: 0,
+          sortBy: { column: "name", order: "desc" },
+        });
+
+      if (error) {
+        console.error("Supabase Storage query error:", error);
+        setError("Failed to fetch converted files.");
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        console.log("No converted files found in the processed folder.");
+        setConvertedFiles([]);
+        return;
+      }
+
+      // Generate public URLs for each file
+      const files: ConvertedFile[] = data.map((file) => ({
+        id: file.id || file.name,
+        originalName: file.name.split("/").pop() || "Unknown",
+        convertedUrl:
+          supabase.storage
+            .from("lofi-tracks")
+            .getPublicUrl(`processed/${file.name}`).data?.publicUrl || "",
+        createdAt: new Date(file.updated_at || file.created_at || Date.now()),
+      }));
+
+      setConvertedFiles(files);
+    } catch (err) {
+      console.error("Error fetching files:", err);
+      setError("Failed to fetch converted files.");
+    }
+  }, [user]);
+
+  // Fetch files on component mount
+  useEffect(() => {
+    fetchConvertedFiles();
+  }, [fetchConvertedFiles]);
+
   const handleReset = useCallback(() => {
     setEffects(defaultEffects);
     processorRef.current?.setEffects(defaultEffects);
@@ -57,7 +116,7 @@ export const CreatePage = () => {
         setIsProcessing(true);
         setIsUploading(true);
         // Upload to Supabase storage
-        const fileName = `${user?.id}/${Date.now()}-${file.name}`;
+        const fileName = `${Date.now()}-${file.name}`;
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from("lofi-tracks")
           .upload(fileName, file);
@@ -87,6 +146,38 @@ export const CreatePage = () => {
     },
     [effects, user]
   );
+
+  const convertToMp3 = async (audioBuffer: AudioBuffer): Promise<Blob> => {
+    const offlineContext = new OfflineAudioContext({
+      numberOfChannels: 2,
+      length: audioBuffer.length,
+      sampleRate: audioBuffer.sampleRate,
+    });
+
+    const source = offlineContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(offlineContext.destination);
+    source.start();
+
+    const renderedBuffer = await offlineContext.startRendering();
+
+    return new Promise((resolve) => {
+      const mediaRecorder = new MediaRecorder(new MediaStream());
+      const chunks: BlobPart[] = [];
+
+      mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: "audio/mp3" });
+        resolve(blob);
+      };
+
+      const channel = renderedBuffer.getChannelData(0);
+      const audioData = new Float32Array(channel);
+      const wavBuffer = createWavBuffer(audioData, renderedBuffer.sampleRate);
+      mediaRecorder.start();
+      mediaRecorder.stop();
+    });
+  };
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -132,38 +223,44 @@ export const CreatePage = () => {
 
     try {
       setIsGenerating(true);
-      setIsProcessing(true);
+
+      // Get the Blob from the processor
       const processedBlob = await processorRef.current.exportLoFi();
 
-      // Upload processed file to Supabase
-      const fileName = `${
-        user.id
-      }/processed/${Date.now()}-lofi-${fileNameWithoutExt}.webm`;
-      const { error: uploadError } = await supabase.storage
-        .from("lofi-tracks")
-        .upload(fileName, processedBlob);
+      // Create a temporary URL for the Blob
+      const blobUrl = URL.createObjectURL(processedBlob);
 
-      if (uploadError) throw uploadError;
-
-      // Get download URL
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("lofi-tracks").getPublicUrl(fileName);
-
-      // Trigger download
+      // Create a download link
       const link = document.createElement("a");
-      link.href = publicUrl;
-      link.download = `lofi-${fileNameWithoutExt}.webm`;
+      link.href = blobUrl;
+      link.download = `lofi-${fileNameWithoutExt}.mp3`;
       document.body.appendChild(link);
       link.click();
+
+      // Cleanup
       document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+
+      // Optionally: Store the file in Supabase storage for future access
+      const fileName = `processed/${Date.now()}-lofi-${fileNameWithoutExt}.mp3`;
+      const { error: uploadError } = await supabase.storage
+        .from("lofi-tracks")
+        .upload(fileName, processedBlob, { contentType: "audio/mp3" });
+
+      if (uploadError) {
+        console.error("Error uploading file to storage:", uploadError);
+        setError("Failed to save the processed file.");
+        return;
+      }
+
+      // Fetch the updated list of converted files
+      await fetchConvertedFiles();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error exporting file");
     } finally {
-      setIsProcessing(false);
       setIsGenerating(false);
     }
-  }, [file, user]);
+  }, [file, user, fetchConvertedFiles]);
 
   return (
     <div className="min-h-screen bg-[#FDF7F4] text-[#685752]">
@@ -533,20 +630,93 @@ export const CreatePage = () => {
         <div className="mt-8 flex justify-end">
           <button
             onClick={handleExport}
-            disabled={!file || isProcessing}
-            className="px-6 py-3 bg-[#8EB486] hover:bg-[#997C70] text-white rounded-md transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+            disabled={isGenerating || !file}
+            className="px-6 py-3 bg-[#8EB486] hover:bg-[#997C70] text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
           >
             {isGenerating ? (
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>Generating Lo-Fi...</span>
-              </div>
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Processing...</span>
+              </>
             ) : (
-              "Generate Lo-Fi"
+              <>
+                <span>Generate Lo-Fi</span>
+              </>
             )}
           </button>
         </div>
       </div>
+
+      {/* Converted Files Section */}
+      {convertedFiles.length > 0 && (
+        <div className="bg-white/50 backdrop-blur-sm rounded-lg p-6 shadow-lg border border-[#997C70]/20 mb-8">
+          <h2 className="text-xl font-semibold mb-4">Your Converted Files</h2>
+          <ul>
+            {convertedFiles.map((file) => (
+              <li
+                key={file.id}
+                className="flex items-center justify-between mb-4"
+              >
+                <div>
+                  <p className="text-[#685752] font-medium">
+                    {file.originalName}
+                  </p>
+                  <p className="text-sm text-[#685752]/70">
+                    {file.createdAt.toLocaleString()}
+                  </p>
+                </div>
+                <a
+                  href={file.convertedUrl}
+                  download
+                  className="px-4 py-2 bg-[#8EB486] hover:bg-[#997C70] text-white rounded-md"
+                >
+                  Download
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };
+function createWavBuffer(audioData: Float32Array, sampleRate: number): Buffer {
+  const bytesPerSample = 2;
+  const buffer = new ArrayBuffer(44 + audioData.length * bytesPerSample);
+  const view = new DataView(buffer);
+
+  // Write WAV header
+  // "RIFF" chunk descriptor
+  writeString(view, 0, "RIFF");
+  view.setUint32(4, 36 + audioData.length * bytesPerSample, true);
+  writeString(view, 8, "WAVE");
+
+  // "fmt " sub-chunk
+  writeString(view, 12, "fmt ");
+  view.setUint32(16, 16, true); // fmt chunk size
+  view.setUint16(20, 1, true); // audio format (1 = PCM)
+  view.setUint16(22, 1, true); // number of channels
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * bytesPerSample, true); // byte rate
+  view.setUint16(32, bytesPerSample, true); // block align
+  view.setUint16(34, 16, true); // bits per sample
+
+  // "data" sub-chunk
+  writeString(view, 36, "data");
+  view.setUint32(40, audioData.length * bytesPerSample, true);
+
+  // Write audio data
+  const offset = 44;
+  for (let i = 0; i < audioData.length; i++) {
+    const sample = Math.max(-1, Math.min(1, audioData[i]));
+    view.setInt16(offset + i * bytesPerSample, sample * 0x7fff, true);
+  }
+
+  return Buffer.from(buffer);
+}
+
+function writeString(view: DataView, offset: number, string: string) {
+  for (let i = 0; i < string.length; i++) {
+    view.setUint8(offset + i, string.charCodeAt(i));
+  }
+}
