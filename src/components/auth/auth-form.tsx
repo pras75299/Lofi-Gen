@@ -15,30 +15,30 @@ export const AuthForm = () => {
   const handleSocialLogin = async (provider: "github" | "google") => {
     setLoading(true);
     setError(null);
-    const currentUrl = window.location.origin;
 
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const currentUrl = window.location.origin;
+      console.log("Redirect URL:", `${currentUrl}/create`);
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo: `${currentUrl}/create`,
           skipBrowserRedirect: false,
-          queryParams: {
-            access_type: "offline",
-            prompt: "consent",
-          },
         },
       });
 
       if (error) {
         throw error;
       }
+      console.log("OAuth response:", data);
     } catch (err) {
+      console.error("OAuth error:", err);
       setError(
         err instanceof Error
           ? err.message
           : "Failed to connect with social provider"
       );
+    } finally {
       setLoading(false);
     }
   };

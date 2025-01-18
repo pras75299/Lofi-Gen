@@ -1,22 +1,29 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { User } from "@supabase/supabase-js";
+import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
-type AuthContextType = {
+interface AuthContextType {
   user: User | null;
-  loading: boolean;
+  session: Session | null;
   signOut: () => Promise<void>;
-};
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+  loading: boolean;
+}
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  session: null,
+  signOut: async () => {},
+  loading: false,
+});
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
     // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
@@ -25,11 +32,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user && window.location.hash.includes("access_token")) {
-        // Clear the hash and navigate to /create
-        window.location.hash = "";
-        window.location.href = "/create";
-      }
+      console.log("Auth state changed:", _event, session); // Debug log
+      setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
@@ -58,7 +62,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );
