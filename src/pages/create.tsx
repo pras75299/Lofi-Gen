@@ -13,6 +13,8 @@ export const CreatePage = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const processorRef = useRef<LoFiProcessor | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const defaultEffects = {
     vinylCrackle: 1,
@@ -53,7 +55,7 @@ export const CreatePage = () => {
         }
 
         setIsProcessing(true);
-
+        setIsUploading(true);
         // Upload to Supabase storage
         const fileName = `${user?.id}/${Date.now()}-${file.name}`;
         const { data: uploadData, error: uploadError } = await supabase.storage
@@ -80,6 +82,7 @@ export const CreatePage = () => {
         setError(err instanceof Error ? err.message : "Error loading file");
       } finally {
         setIsProcessing(false);
+        setIsUploading(false);
       }
     },
     [effects, user]
@@ -128,6 +131,7 @@ export const CreatePage = () => {
     );
 
     try {
+      setIsGenerating(true);
       setIsProcessing(true);
       const processedBlob = await processorRef.current.exportLoFi();
 
@@ -157,6 +161,7 @@ export const CreatePage = () => {
       setError(err instanceof Error ? err.message : "Error exporting file");
     } finally {
       setIsProcessing(false);
+      setIsGenerating(false);
     }
   }, [file, user]);
 
@@ -206,24 +211,33 @@ export const CreatePage = () => {
             onDrop={handleDrop}
             onDragOver={(e) => e.preventDefault()}
           >
-            <p className="text-[#997C70] mb-4">
-              Drag and drop your audio file here, or click to browse
-            </p>
-            <input
-              type="file"
-              accept="audio/*"
-              className="hidden"
-              id="audio-input"
-              onChange={(e) =>
-                e.target.files?.[0] && handleFileChange(e.target.files[0])
-              }
-            />
-            <label
-              htmlFor="audio-input"
-              className="px-4 py-2 bg-[#8EB486] hover:bg-[#997C70] text-white rounded-md transition-colors cursor-pointer inline-block shadow-md"
-            >
-              Choose File
-            </label>
+            {isUploading ? (
+              <div className="flex flex-col items-center">
+                <div className="w-8 h-8 border-4 border-[#8EB486] border-t-transparent rounded-full animate-spin"></div>
+                <p className="mt-4 text-[#997C70]">Uploading audio file...</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-[#997C70] mb-4">
+                  Drag and drop your audio file here, or click to browse
+                </p>
+                <input
+                  type="file"
+                  accept="audio/*"
+                  className="hidden"
+                  id="audio-input"
+                  onChange={(e) =>
+                    e.target.files?.[0] && handleFileChange(e.target.files[0])
+                  }
+                />
+                <label
+                  htmlFor="audio-input"
+                  className="px-4 py-2 bg-[#8EB486] hover:bg-[#997C70] text-white rounded-md transition-colors cursor-pointer inline-block shadow-md"
+                >
+                  Choose File
+                </label>
+              </>
+            )}
           </div>
 
           {file && (
@@ -522,7 +536,14 @@ export const CreatePage = () => {
             disabled={!file || isProcessing}
             className="px-6 py-3 bg-[#8EB486] hover:bg-[#997C70] text-white rounded-md transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
           >
-            {isProcessing ? "Processing..." : "Generate Lo-Fi Track"}
+            {isGenerating ? (
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>Generating Lo-Fi...</span>
+              </div>
+            ) : (
+              "Generate Lo-Fi"
+            )}
           </button>
         </div>
       </div>
