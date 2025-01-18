@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { useNavigate } from "react-router-dom";
 
 interface AuthContextType {
   user: User | null;
@@ -19,8 +20,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
+    const handleHashFragment = async () => {
+      const hash = window.location.hash;
+      if (hash && hash.includes("access_token")) {
+        const params = new URLSearchParams(hash.substring(1));
+        const accessToken = params.get("access_token");
+        const refreshToken = params.get("refresh_token");
+
+        if (accessToken && refreshToken) {
+          const {
+            data: { session },
+            error,
+          } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (session && !error) {
+            setSession(session);
+            setUser(session.user);
+            // Clean URL and redirect
+            window.location.hash = "";
+            navigate("/create", { replace: true });
+          }
+        }
+      }
+    };
+
+    handleHashFragment();
+
     // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -43,7 +74,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     const hash = window.location.hash;

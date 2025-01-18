@@ -26,9 +26,7 @@ export const AuthForm = () => {
       });
 
       if (error) throw error;
-      console.log("OAuth response:", data);
     } catch (err) {
-      console.error("OAuth error:", err);
       setError(
         err instanceof Error
           ? err.message
