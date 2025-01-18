@@ -17,19 +17,15 @@ export const AuthForm = () => {
     setError(null);
 
     try {
-      const currentUrl = window.location.origin;
-      console.log("Redirect URL:", `${currentUrl}/create`);
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${currentUrl}/create`,
+          redirectTo: `${window.location.origin}/create`,
           skipBrowserRedirect: false,
         },
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
       console.log("OAuth response:", data);
     } catch (err) {
       console.error("OAuth error:", err);

@@ -36,6 +36,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+
+      if (_event === "SIGNED_IN") {
+        window.history.replaceState({}, "", "/create");
+      }
     });
 
     return () => subscription.unsubscribe();

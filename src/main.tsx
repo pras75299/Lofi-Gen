@@ -1,16 +1,21 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import App from './App.tsx';
-import { CreatePage } from './pages/create.tsx';
-import { ProtectedRoute } from './components/auth/protected-route';
-import { AuthProvider } from './components/auth/auth-provider';
-import './index.css';
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import App from "./App.tsx";
+import { CreatePage } from "./pages/create.tsx";
+import { ProtectedRoute } from "./components/auth/protected-route";
+import { AuthProvider } from "./components/auth/auth-provider";
+import "./index.css";
 
-createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AuthProvider>
-      <Router>
+    <Router>
+      <AuthProvider>
         <Routes>
           <Route path="/" element={<App />} />
           <Route
@@ -23,7 +28,7 @@ createRoot(document.getElementById('root')!).render(
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </Router>
-    </AuthProvider>
+      </AuthProvider>
+    </Router>
   </StrictMode>
 );
