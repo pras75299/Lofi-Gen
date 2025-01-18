@@ -7,7 +7,7 @@ import { Slider } from "@/components/ui/slider";
 import { useAuth } from "@/components/auth/auth-provider";
 
 export const CreatePage = () => {
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -52,15 +52,37 @@ export const CreatePage = () => {
           throw new Error("File size must be less than 50MB");
         }
 
-        setFile(file);
+        setIsProcessing(true);
+
+        // Upload to Supabase storage
+        const fileName = `${user?.id}/${Date.now()}-${file.name}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("lofi-tracks")
+          .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        // Get the public URL
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("lofi-tracks").getPublicUrl(fileName);
+
+        // Download the file to process locally
+        const response = await fetch(publicUrl);
+        const fileBlob = await response.blob();
+        const localFile = new File([fileBlob], file.name, { type: file.type });
+
+        setFile(localFile);
         processorRef.current = new LoFiProcessor();
-        await processorRef.current.loadFile(file);
+        await processorRef.current.loadFile(localFile);
         processorRef.current.setEffects(effects);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error loading file");
+      } finally {
+        setIsProcessing(false);
       }
     },
-    [effects]
+    [effects, user]
   );
 
   const handleDrop = useCallback(
@@ -97,7 +119,7 @@ export const CreatePage = () => {
   }, [isPlaying]);
 
   const handleExport = useCallback(async () => {
-    if (!processorRef.current || !file) return;
+    if (!processorRef.current || !file || !user) return;
 
     const originalFileName = file.name;
     const fileNameWithoutExt = originalFileName.substring(
@@ -109,20 +131,34 @@ export const CreatePage = () => {
       setIsProcessing(true);
       const processedBlob = await processorRef.current.exportLoFi();
 
-      // Create and trigger download
+      // Upload processed file to Supabase
+      const fileName = `${
+        user.id
+      }/processed/${Date.now()}-lofi-${fileNameWithoutExt}.webm`;
+      const { error: uploadError } = await supabase.storage
+        .from("lofi-tracks")
+        .upload(fileName, processedBlob);
+
+      if (uploadError) throw uploadError;
+
+      // Get download URL
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("lofi-tracks").getPublicUrl(fileName);
+
+      // Trigger download
       const link = document.createElement("a");
-      link.href = URL.createObjectURL(processedBlob);
+      link.href = publicUrl;
       link.download = `lofi-${fileNameWithoutExt}.webm`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(link.href);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error exporting file");
     } finally {
       setIsProcessing(false);
     }
-  }, [file]);
+  }, [file, user]);
 
   return (
     <div className="min-h-screen bg-[#FDF7F4] text-[#685752]">
