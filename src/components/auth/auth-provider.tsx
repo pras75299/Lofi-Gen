@@ -45,13 +45,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setSession(session);
             setUser(session.user);
 
-            // Redirect to the appropriate route
+            // Redirect to the correct route
             const redirectUrl =
               process.env.NODE_ENV === "development"
                 ? "http://localhost:5173/create"
-                : "https://lofi-gen.netlify.app/create";
+                : "/create"; // Relative URL works with Netlify's redirect config
 
-            window.location.href = redirectUrl; // Redirect to the correct environment
+            navigate(redirectUrl, { replace: true }); // Use navigate for consistency
           }
         }
       }
