@@ -646,37 +646,38 @@ export const CreatePage = () => {
           </button>
         </div>
       </div>
-
-      {/* Converted Files Section */}
-      {convertedFiles.length > 0 && (
-        <div className="bg-white/50 backdrop-blur-sm rounded-lg p-6 shadow-lg border border-[#997C70]/20 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Your Converted Files</h2>
-          <ul>
-            {convertedFiles.map((file) => (
-              <li
-                key={file.id}
-                className="flex items-center justify-between mb-4"
-              >
-                <div>
-                  <p className="text-[#685752] font-medium">
-                    {file.originalName}
-                  </p>
-                  <p className="text-sm text-[#685752]/70">
-                    {file.createdAt.toLocaleString()}
-                  </p>
-                </div>
-                <a
-                  href={file.convertedUrl}
-                  download
-                  className="px-4 py-2 bg-[#8EB486] hover:bg-[#997C70] text-white rounded-md"
+      <div className="max-w-4xl mx-auto p-8">
+        {/* Converted Files Section */}
+        {convertedFiles.length > 0 && (
+          <>
+            <h2 className="text-xl font-semibold mb-4">Your Converted Files</h2>
+            <ul>
+              {convertedFiles.map((file) => (
+                <li
+                  key={file.id}
+                  className="flex items-center justify-between mb-4 bg-white/50 backdrop-blur-sm rounded-lg p-3 shadow-sm border border-[#997C70]/20"
                 >
-                  Download
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+                  <div>
+                    <p className="text-[#685752] font-medium">
+                      {file.originalName}
+                    </p>
+                    <p className="text-sm text-[#685752]/70">
+                      {file.createdAt.toLocaleString()}
+                    </p>
+                  </div>
+                  <a
+                    href={file.convertedUrl}
+                    download
+                    className="px-4 py-2 bg-[#8EB486] hover:bg-[#997C70] text-white rounded-md"
+                  >
+                    Download
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
     </div>
   );
 };
