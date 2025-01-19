@@ -9,6 +9,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   loading: boolean;
 }
+
 const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
@@ -25,6 +26,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const handleHashFragment = async () => {
       const hash = window.location.hash;
+
       if (hash && hash.includes("access_token")) {
         const params = new URLSearchParams(hash.substring(1));
         const accessToken = params.get("access_token");
@@ -42,9 +44,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           if (session && !error) {
             setSession(session);
             setUser(session.user);
-            // Clean URL and redirect
-            window.location.hash = "";
-            navigate("/create", { replace: true });
+
+            // Redirect to the appropriate route
+            const redirectUrl =
+              process.env.NODE_ENV === "development"
+                ? "http://localhost:5173/create"
+                : "https://lofi-gen.netlify.app/create";
+
+            window.location.href = redirectUrl; // Redirect to the correct environment
           }
         }
       }
@@ -52,48 +59,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     handleHashFragment();
 
-    // Check active sessions and sets the user
+    // Check the current session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    // Listen for changes on auth state
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log("Auth state changed:", _event, session); // Debug log
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+    // Listen for auth state changes
+    const { data: subscription } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log("Auth state changed:", event, session); // Debugging log
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
 
-      if (_event === "SIGNED_IN") {
-        window.history.replaceState({}, "", "/create");
+        if (event === "SIGNED_IN") {
+          navigate("/create", { replace: true });
+        } else if (event === "SIGNED_OUT") {
+          navigate("/", { replace: true });
+        }
       }
-    });
+    );
 
-    return () => subscription.unsubscribe();
+    return () => subscription.subscription.unsubscribe();
   }, [navigate]);
-
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (hash.includes("access_token")) {
-      const params = new URLSearchParams(hash.substring(1)); // Remove the '#' and parse params
-      const accessToken = params.get("access_token");
-
-      // Optionally, you can store the token if needed for your app's context
-      if (accessToken) {
-        // Process the token if necessary
-      }
-
-      // Clear the hash fragment from the URL
-      window.location.hash = "";
-    }
-  }, []);
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    setUser(null);
+    setSession(null);
+    navigate("/", { replace: true });
   };
 
   return (
