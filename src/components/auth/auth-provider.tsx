@@ -45,13 +45,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setSession(session);
             setUser(session.user);
 
-            // Redirect to the correct route
-            const redirectUrl =
-              process.env.NODE_ENV === "development"
-                ? "http://localhost:5173/create"
-                : "/create"; // Relative URL works with Netlify's redirect config
-
-            navigate(redirectUrl, { replace: true }); // Use navigate for consistency
+            // Redirect to "/create" relative to the current environment
+            const redirectUrl = `${window.location.origin}/create`;
+            window.location.href = redirectUrl; // Use full redirect here
           }
         }
       }
@@ -75,7 +71,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setLoading(false);
 
         if (event === "SIGNED_IN") {
-          navigate("/create", { replace: true });
+          navigate("/create", { replace: true }); // Use relative path for navigation
         } else if (event === "SIGNED_OUT") {
           navigate("/", { replace: true });
         }
