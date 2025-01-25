@@ -65,13 +65,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Listen for auth state changes
     const { data: subscription } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log("Auth state changed:", event, session); // Debugging log
+        //console.log("Auth state changed:", event, session);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
 
         if (event === "SIGNED_IN") {
-          navigate("/create", { replace: true }); // Use relative path for navigation
+          navigate("/create", { replace: true });
         } else if (event === "SIGNED_OUT") {
           navigate("/", { replace: true });
         }
