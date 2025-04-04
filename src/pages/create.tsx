@@ -108,9 +108,9 @@ export const CreatePage = () => {
           throw new Error("Please upload an audio file");
         }
 
-        const maxSize = 50 * 1024 * 1024; // 50MB
+        const maxSize = 10 * 1024 * 1024; // 10MB
         if (file.size > maxSize) {
-          throw new Error("File size must be less than 50MB");
+          throw new Error("File size must be less than 10MB");
         }
 
         setIsProcessing(true);
@@ -317,6 +317,9 @@ export const CreatePage = () => {
               <>
                 <p className="text-[#997C70] mb-4">
                   Drag and drop your audio file here, or click to browse
+                </p>
+                <p className="text-sm text-[#997C70]/70 mb-4">
+                  Supported formats: MP3, WAV, OGG, AAC, MP4 (max 10MB)
                 </p>
                 <input
                   type="file"
