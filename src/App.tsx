@@ -113,12 +113,12 @@ function App() {
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <div className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
+      {/* Hero Section - Updated Background and Text Colors */}
+      <div className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16 bg-[#4A6C2B]">
         <MeteorPreview />
         <div className="relative z-10 container mx-auto px-4 py-32 text-center">
           <motion.h1
-            className="text-5xl md:text-7xl font-bold mb-6 text-[#8EB486]"
+            className="text-5xl md:text-7xl font-bold mb-6 text-white"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
@@ -126,7 +126,7 @@ function App() {
             Transform Your Music into Lo-Fi Masterpieces
           </motion.h1>
           <motion.p
-            className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto"
+            className="text-xl text-gray-200 mb-12 max-w-2xl mx-auto"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
@@ -137,7 +137,7 @@ function App() {
             <div className="inline-block">
               <button
                 onClick={() => setShowAuthForm(true)}
-                className="relative px-8 py-4 bg-[#8EB486] hover:bg-[#997C70] text-white font-medium rounded-md transition-colors group shadow-lg"
+                className="relative px-8 py-4 bg-white/90 hover:bg-white text-[#4A6C2B] font-medium rounded-md transition-colors group shadow-lg"
               >
                 Get Started
                 <ArrowRight className="inline-block ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
@@ -147,10 +147,10 @@ function App() {
         </div>
       </div>
 
-      {/* Features Section */}
-      <div className="py-24 bg-[#4A6C2B]">
+      {/* Features Section - Updated Background and Title Color */}
+      <div className="py-24 bg-[#FDF7F4]" id="features">
         <div className="container mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center mb-16 text-white">
+          <h2 className="text-4xl font-bold text-center mb-16 text-[#685752]">
             Core Features
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -193,7 +193,7 @@ function App() {
         </div>
       </div>
 
-      {/* CTA Section */}
+      {/* CTA Section - Added Sign Up Button */}
       <div className="py-24 bg-[#997C70]" id="cta">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-4xl font-bold mb-6 text-white">
@@ -201,9 +201,17 @@ function App() {
           </h2>
           <p className="text-xl text-white/80 mb-12 max-w-2xl mx-auto">
             {user
-              ? "Welcome back! Ready to create more Lo-Fi masterpieces?"
-              : "Start creating your own Lo-Fi masterpieces today. Sign up now and get access to all our premium features."}
+              ? "Ready to create more Lo-Fi masterpieces?"
+              : "Start creating your own Lo-Fi masterpieces today. Sign up now and get instant access to all features!"}
           </p>
+          {!user && (
+            <button
+              onClick={() => setShowAuthForm(true)}
+              className="px-8 py-3 bg-[#FDF7F4] hover:bg-white text-[#997C70] font-semibold rounded-md transition-colors shadow-lg"
+            >
+              Sign Up
+            </button>
+          )}
         </div>
       </div>
 
@@ -230,14 +238,14 @@ function App() {
         )}
       </AnimatePresence>
 
-      {/* Footer */}
+      {/* Footer - Updated Columns */}
       <footer className="py-12 border-t border-[#997C70]/20">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
-              <h3 className="text-lg font-semibold mb-4">Lo-Fi Generator</h3>
+              <h3 className="text-lg font-semibold mb-4">Text Generator</h3>
               <p className="text-[#997C70]">
-                Transform your music into Lo-Fi masterpieces.
+                Simply voliuer, your audio do and twir creating.
               </p>
             </div>
             <div>
@@ -251,78 +259,30 @@ function App() {
                     Features
                   </a>
                 </li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold mb-4">Resources</h4>
+              <ul className="space-y-2 text-[#997C70]">
                 <li>
                   <a
-                    href="#pricing"
+                    href="#"
                     className="hover:text-[#8EB486] transition-colors"
                   >
-                    Pricing
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#faq"
-                    className="hover:text-[#8EB486] transition-colors"
-                  >
-                    FAQ
+                    Blog
                   </a>
                 </li>
               </ul>
             </div>
             <div>
-              <h4 className="text-lg font-semibold mb-4">Support</h4>
+              <h4 className="text-lg font-semibold mb-4">Contact</h4>
               <ul className="space-y-2 text-[#997C70]">
                 <li>
                   <a
-                    href="#contact"
+                    href="mailto:support@example.com"
                     className="hover:text-[#8EB486] transition-colors"
                   >
-                    Contact
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#docs"
-                    className="hover:text-[#8EB486] transition-colors"
-                  >
-                    Documentation
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#terms"
-                    className="hover:text-[#8EB486] transition-colors"
-                  >
-                    Terms of Service
-                  </a>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-4">Connect</h4>
-              <ul className="space-y-2 text-[#997C70]">
-                <li>
-                  <a
-                    href="#twitter"
-                    className="hover:text-[#8EB486] transition-colors"
-                  >
-                    Twitter
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#discord"
-                    className="hover:text-[#8EB486] transition-colors"
-                  >
-                    Discord
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#github"
-                    className="hover:text-[#8EB486] transition-colors"
-                  >
-                    GitHub
+                    Email
                   </a>
                 </li>
               </ul>
