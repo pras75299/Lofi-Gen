@@ -78,15 +78,62 @@ Follow these steps to set up and run the Lo-Fi Generator locally:
     - **Important:** Replace `YOUR_SUPABASE_PROJECT_URL` and `YOUR_SUPABASE_ANON_PUBLIC_KEY` with the actual values from your Supabase project settings. Ensure `.env` is listed in your `.gitignore` file to prevent committing secrets.
 
 6.  **Run the Development Server:**
+
     ```bash
     npm run dev
     ```
+
     The application should now be running, typically at `http://localhost:5173`.
+
+7.  **Alternatively, Run with Docker:**
+    - Ensure Docker is installed and running.
+    - Build the image:
+      ```bash
+      docker build -t lofi-generator .
+      ```
+    - Run the container:
+      ```bash
+      # Runs the app on http://localhost:8080
+      docker run -p 8080:80 --name lofi-app lofi-generator
+      ```
+    - To run detached (in the background):
+      ```bash
+      docker run -d -p 8080:80 --name lofi-app lofi-generator
+      ```
+    - To stop the container:
+      ```bash
+      docker stop lofi-app
+      ```
+    - To remove the container (after stopping):
+      ```bash
+      docker rm lofi-app
+      ```
 
 ## Contributing
 
-[Optional: Add guidelines for contributing if this is an open-source project.]
+Contributions are welcome! Please follow these steps:
+
+1.  **Fork the repository.**
+2.  **Create a new branch** for your feature or bug fix:
+    ```bash
+    git checkout -b feat/your-feature-name # or fix/your-bug-fix
+    ```
+3.  **Make your changes.** Ensure your code follows the project's style guidelines.
+4.  **Test your changes** thoroughly (manual testing, unit tests if applicable).
+5.  **Commit your changes** with a clear commit message.
+6.  **Push your branch** to your fork:
+    ```bash
+    git push origin feat/your-feature-name
+    ```
+7.  **Open a Pull Request** against the main branch of the original repository.
+8.  **Fill out the Pull Request template** provided (`.github/PrTemplate.md`):
+    - Provide a clear **description** of the changes.
+    - Link any related **issues** (use "Fixes #issue_number" to auto-close).
+    - List the specific **changes made**.
+    - Describe the **testing** performed.
+    - Include **screenshots/GIFs** if applicable.
+    - Go through the **checklist** to ensure quality.
 
 ## License
 
-[Optional: Add license information, e.g., MIT License.]
+MIT License
