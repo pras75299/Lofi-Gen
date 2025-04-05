@@ -85,7 +85,7 @@ Follow these steps to set up and run the Lo-Fi Generator locally:
 
 ## Contributing
 
-Please read our [Pull Request Template](.github/pull_request_template.md) for guidelines on contributing to this project.
+Please read our [Pull Request Template](.github/PrTemplate.md) for guidelines on contributing to this project.
 
 ## License
 
