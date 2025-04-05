@@ -85,8 +85,8 @@ Follow these steps to set up and run the Lo-Fi Generator locally:
 
 ## Contributing
 
-[Optional: Add guidelines for contributing if this is an open-source project.]
+Please read our [Pull Request Template](.github/pull_request_template.md) for guidelines on contributing to this project.
 
 ## License
 
-[Optional: Add license information, e.g., MIT License.]
+MIT License
