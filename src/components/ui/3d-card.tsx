@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
-import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import * as React from "react";
+import { createContext, useContext, useRef, useState } from "react";
 
 const MouseEnterContext = createContext<{
   mouseX: number;

@@ -1,5 +1,4 @@
 import { LucideIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { ThreeDCard, ThreeDCardTitle, ThreeDCardDescription } from "./ui/3d-card";
 
 export const FeatureCard = ({

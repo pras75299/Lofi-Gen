@@ -1,17 +1,16 @@
-import React from "react";
+import { useState } from "react";
 import { MeteorPreview } from "./components/ui/meteor-preview";
-import { MovingBorder } from "./components/ui/moving-border";
-import { TestimonialCard } from "./components/testimonial-card";
 import { FeatureCard } from "./components/feature-card";
 import { InfiniteMovingCards } from "./components/ui/infinite-moving-cards";
-import { Upload, Music, Sliders, ArrowRight, Music2 } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { Upload, Music, Sliders, ArrowRight } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { AuthForm } from "./components/auth/auth-form";
 import { useAuth } from "./components/auth/auth-provider";
+import { Layout } from "./components/layout/Layout";
 
 function App() {
-  const { user, signOut } = useAuth();
-  const [showAuthForm, setShowAuthForm] = React.useState(false);
+  const { user } = useAuth();
+  const [showAuthForm, setShowAuthForm] = useState(false);
 
   const features = [
     {
@@ -62,59 +61,9 @@ function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FDF7F4] text-[#685752]">
-      {/* Navigation Bar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#FDF7F4]/80 backdrop-blur-sm border-b border-[#997C70]/20">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            <a
-              href="/"
-              className="flex items-center space-x-2 text-[#8EB486] hover:text-[#997C70] transition-colors"
-            >
-              <Music2 className="w-6 h-6" />
-              <span className="text-xl font-bold">LOFIGEN</span>
-            </a>
-            <div className="flex items-center space-x-4">
-              {user ? (
-                <>
-                  <a
-                    href="/create"
-                    className="px-4 py-2 text-[#685752] hover:text-[#8EB486] transition-colors"
-                  >
-                    Create
-                  </a>
-                  <button
-                    onClick={() => signOut()}
-                    className="px-4 py-2 bg-[#8EB486] hover:bg-[#997C70] text-white font-medium rounded-md transition-colors"
-                  >
-                    Sign Out
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={() => setShowAuthForm(true)}
-                    className="px-4 py-2 text-[#685752] hover:text-[#8EB486] transition-colors"
-                  >
-                    Sign In
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowAuthForm(true);
-                    }}
-                    className="px-4 py-2 bg-[#8EB486] hover:bg-[#997C70] text-white font-medium rounded-md transition-colors shadow-lg"
-                  >
-                    Sign Up
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* Hero Section - Updated Background and Text Colors */}
-      <div className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16 bg-[#4A6C2B]">
+    <Layout onAuthClick={() => setShowAuthForm(true)}>
+      {/* Hero Section */}
+      <div className="relative min-h-[calc(100vh-64px)] flex items-center justify-center overflow-hidden bg-[#4A6C2B]">
         <MeteorPreview />
         <div className="relative z-10 container mx-auto px-4 py-32 text-center">
           <motion.h1
@@ -131,13 +80,13 @@ function App() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            Transform your music with the perfect Lo-Fi vibe instantly.
+            Apply authentic Lo-Fi aesthetics to your tracks instantly with our advanced DSP processing.
           </motion.p>
           {!user && (
             <div className="inline-block">
               <button
                 onClick={() => setShowAuthForm(true)}
-                className="relative px-8 py-4 bg-white/90 hover:bg-white text-[#4A6C2B] font-medium rounded-md transition-colors group shadow-lg"
+                className="relative px-8 py-4 bg-white/90 hover:bg-white text-[#4A6C2B] font-medium rounded-full transition-all duration-300 group shadow-lg"
               >
                 Get Started
                 <ArrowRight className="inline-block ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
@@ -147,7 +96,7 @@ function App() {
         </div>
       </div>
 
-      {/* Features Section - Updated Background and Title Color */}
+      {/* Features Section */}
       <div className="py-24 bg-[#FDF7F4]" id="features">
         <div className="container mx-auto px-4">
           <h2 className="text-4xl font-bold text-center mb-16 text-[#685752]">
@@ -162,9 +111,9 @@ function App() {
       </div>
 
       {/* Testimonials Section */}
-      <div className="py-24">
+      <div className="py-24 bg-white">
         <div className="container mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center mb-8">
+          <h2 className="text-4xl font-bold text-center mb-8 text-[#685752]">
             What Our Users Say
           </h2>
           <InfiniteMovingCards
@@ -193,7 +142,7 @@ function App() {
         </div>
       </div>
 
-      {/* CTA Section - Added Sign Up Button */}
+      {/* CTA Section */}
       <div className="py-24 bg-[#997C70]" id="cta">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-4xl font-bold mb-6 text-white">
@@ -207,7 +156,7 @@ function App() {
           {!user && (
             <button
               onClick={() => setShowAuthForm(true)}
-              className="px-8 py-3 bg-[#FDF7F4] hover:bg-white text-[#997C70] font-semibold rounded-md transition-colors shadow-lg"
+              className="px-8 py-3 bg-[#FDF7F4] hover:bg-white text-[#997C70] font-semibold rounded-full transition-all duration-300 shadow-lg"
             >
               Sign Up
             </button>
@@ -218,17 +167,17 @@ function App() {
       {/* Auth Modal */}
       <AnimatePresence>
         {showAuthForm && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="relative"
+              className="relative w-full max-w-md"
             >
               <button
                 onClick={() => setShowAuthForm(false)}
-                className="absolute -top-4 -right-4 w-8 h-8 bg-[#997C70] text-white rounded-full flex items-center justify-center hover:bg-[#685752] transition-colors"
+                className="absolute -top-4 -right-4 w-10 h-10 bg-[#997C70] text-white rounded-full flex items-center justify-center hover:bg-[#685752] transition-colors shadow-lg z-10"
               >
                 ×
               </button>
@@ -237,66 +186,7 @@ function App() {
           </div>
         )}
       </AnimatePresence>
-
-      {/* Footer - Updated Columns */}
-      <footer className="py-12 border-t border-[#997C70]/20">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Text Generator</h3>
-              <p className="text-[#997C70]">
-                Simply voliuer, your audio do and twir creating.
-              </p>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
-              <ul className="space-y-2 text-[#997C70]">
-                <li>
-                  <a
-                    href="#features"
-                    className="hover:text-[#8EB486] transition-colors"
-                  >
-                    Features
-                  </a>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-4">Resources</h4>
-              <ul className="space-y-2 text-[#997C70]">
-                <li>
-                  <a
-                    href="#"
-                    className="hover:text-[#8EB486] transition-colors"
-                  >
-                    Blog
-                  </a>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-4">Contact</h4>
-              <ul className="space-y-2 text-[#997C70]">
-                <li>
-                  <a
-                    href="mailto:support@example.com"
-                    className="hover:text-[#8EB486] transition-colors"
-                  >
-                    Email
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
-          <div className="mt-12 pt-8 border-t border-[#997C70]/20 text-center text-[#997C70]">
-            <p>
-              &copy; {new Date().getFullYear()} Lo-Fi Generator. All rights
-              reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
-    </div>
+    </Layout>
   );
 }
 

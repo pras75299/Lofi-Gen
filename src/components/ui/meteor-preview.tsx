@@ -1,11 +1,10 @@
 import { cn } from "@/lib/utils";
-import React from "react";
 
 export const MeteorPreview = () => {
   const meteors = new Array(20).fill(true);
   return (
     <div className="h-full w-full absolute inset-0">
-      {meteors.map((el, idx) => (
+      {meteors.map((_, idx) => (
         <span
           key={"meteor" + idx}
           className={cn(

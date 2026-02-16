@@ -1,10 +1,15 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
-import { Upload, Music2, Settings2, Music } from "lucide-react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { Upload, Music2, Settings2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { WaveformVisualizer } from "@/components/audio/waveform-visualizer";
 import { LoFiProcessor } from "@/lib/audio-processor";
+import { db } from "@/db";
+import { tracks } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
 import { supabase } from "@/lib/supabase";
 import { Slider } from "@/components/ui/slider";
 import { useAuth } from "@/components/auth/auth-provider";
+import { Layout } from "@/components/layout/Layout";
 
 interface ConvertedFile {
   id: string;
@@ -14,9 +19,15 @@ interface ConvertedFile {
 }
 
 export const CreatePage = () => {
-  const { user, signOut } = useAuth();
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/");
+    }
+  }, [user, loading, navigate]);
   const [file, setFile] = useState<File | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const processorRef = useRef<LoFiProcessor | null>(null);
@@ -47,44 +58,20 @@ export const CreatePage = () => {
 
   const fetchConvertedFiles = useCallback(async () => {
     try {
-      if (!user) {
-        setError("User is not authenticated.");
-        return;
-      }
+      if (!user) return;
 
-      // Fetch files from the 'processed' folder
-      const { data, error } = await supabase.storage
-        .from("lofi-tracks")
-        .list("processed", {
-          limit: 100,
-          offset: 0,
-          sortBy: { column: "name", order: "desc" },
-        });
+      const results = await db
+        .select()
+        .from(tracks)
+        .where(eq(tracks.userId, user.id))
+        .orderBy(desc(tracks.createdAt));
 
-      if (error) {
-        console.error("Supabase Storage query error:", error);
-        setError("Failed to fetch converted files.");
-        return;
-      }
-
-      if (!data || data.length === 0) {
-        console.log("No converted files found in the processed folder.");
-        setConvertedFiles([]);
-        return;
-      }
-
-      // Generate public URLs for each file
-      const files: ConvertedFile[] = data.map((file) => ({
-        id: file.id || file.name,
-        originalName: file.name.split("/").pop() || "Unknown",
-        convertedUrl:
-          supabase.storage
-            .from("lofi-tracks")
-            .getPublicUrl(`processed/${file.name}`).data?.publicUrl || "",
-        createdAt: new Date(file.updated_at || file.created_at || Date.now()),
-      }));
-
-      setConvertedFiles(files);
+      setConvertedFiles(results.map(track => ({
+        id: track.id,
+        originalName: track.originalName,
+        convertedUrl: track.storageUrl,
+        createdAt: track.createdAt,
+      })));
     } catch (err) {
       console.error("Error fetching files:", err);
       setError("Failed to fetch converted files.");
@@ -113,11 +100,11 @@ export const CreatePage = () => {
           throw new Error("File size must be less than 10MB");
         }
 
-        setIsProcessing(true);
+        setIsGenerating(true);
         setIsUploading(true);
         // Upload to Supabase storage
         const fileName = `${Date.now()}-${file.name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from("lofi-tracks")
           .upload(fileName, file);
 
@@ -140,44 +127,13 @@ export const CreatePage = () => {
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error loading file");
       } finally {
-        setIsProcessing(false);
+        setIsGenerating(false);
         setIsUploading(false);
       }
     },
     [effects, user]
   );
 
-  const convertToMp3 = async (audioBuffer: AudioBuffer): Promise<Blob> => {
-    const offlineContext = new OfflineAudioContext({
-      numberOfChannels: 2,
-      length: audioBuffer.length,
-      sampleRate: audioBuffer.sampleRate,
-    });
-
-    const source = offlineContext.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(offlineContext.destination);
-    source.start();
-
-    const renderedBuffer = await offlineContext.startRendering();
-
-    return new Promise((resolve) => {
-      const mediaRecorder = new MediaRecorder(new MediaStream());
-      const chunks: BlobPart[] = [];
-
-      mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: "audio/mp3" });
-        resolve(blob);
-      };
-
-      const channel = renderedBuffer.getChannelData(0);
-      const audioData = new Float32Array(channel);
-      const wavBuffer = createWavBuffer(audioData, renderedBuffer.sampleRate);
-      mediaRecorder.start();
-      mediaRecorder.stop();
-    });
-  };
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -224,7 +180,7 @@ export const CreatePage = () => {
     try {
       setIsGenerating(true);
 
-      // Get the Blob from the processor
+      // Get the Blob from the processor (WAV format)
       const processedBlob = await processorRef.current.exportLoFi();
 
       // Create a temporary URL for the Blob
@@ -233,7 +189,7 @@ export const CreatePage = () => {
       // Create a download link
       const link = document.createElement("a");
       link.href = blobUrl;
-      link.download = `lofi-${fileNameWithoutExt}.mp3`;
+      link.download = `lofi-${fileNameWithoutExt}.wav`;
       document.body.appendChild(link);
       link.click();
 
@@ -242,16 +198,30 @@ export const CreatePage = () => {
       URL.revokeObjectURL(blobUrl);
 
       // Optionally: Store the file in Supabase storage for future access
-      const fileName = `processed/${Date.now()}-lofi-${fileNameWithoutExt}.mp3`;
+      const fileName = `processed/${Date.now()}-lofi-${fileNameWithoutExt}.wav`;
       const { error: uploadError } = await supabase.storage
         .from("lofi-tracks")
-        .upload(fileName, processedBlob, { contentType: "audio/mp3" });
+        .upload(fileName, processedBlob, { contentType: "audio/wav" });
 
       if (uploadError) {
         console.error("Error uploading file to storage:", uploadError);
         setError("Failed to save the processed file.");
         return;
       }
+
+      // Get the public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from("lofi-tracks")
+        .getPublicUrl(fileName);
+
+      // Update the database with the new track
+      await db.insert(tracks).values({
+        userId: user.id,
+        originalName: originalFileName,
+        fileName: fileName,
+        storageUrl: publicUrl,
+        effects: JSON.stringify(effects),
+      });
 
       // Fetch the updated list of converted files
       await fetchConvertedFiles();
@@ -263,30 +233,7 @@ export const CreatePage = () => {
   }, [file, user, fetchConvertedFiles]);
 
   return (
-    <div className="min-h-screen bg-[#FDF7F4] text-[#685752]">
-      {/* Navigation Bar */}
-      <nav className="bg-[#FDF7F4]/80 backdrop-blur-sm border-b border-[#997C70]/20">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            <a
-              href="/"
-              className="flex items-center space-x-2 text-[#8EB486] hover:text-[#997C70] transition-colors"
-            >
-              <Music className="w-6 h-6" />
-              <span className="text-xl font-bold">LOFIGEN</span>
-            </a>
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => signOut()}
-                className="px-4 py-2 bg-[#8EB486] hover:bg-[#997C70] text-white font-medium rounded-md transition-colors shadow-md"
-              >
-                Sign Out
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
+    <Layout>
       <div className="max-w-4xl mx-auto p-8">
         <h1 className="text-4xl font-bold mb-8 text-[#8EB486]">
           Create Your Lo-Fi Track
@@ -385,8 +332,8 @@ export const CreatePage = () => {
                   max={1}
                   step={0.01}
                   value={[effects.vinylCrackle]}
-                  onValueChange={([value]) =>
-                    handleEffectChange("vinylCrackle", value)
+                  onValueChange={([val]: number[]) =>
+                    handleEffectChange("vinylCrackle", val)
                   }
                   className="w-full"
                 />
@@ -400,8 +347,8 @@ export const CreatePage = () => {
                   max={1}
                   step={0.01}
                   value={[effects.tapeHiss]}
-                  onValueChange={([value]) =>
-                    handleEffectChange("tapeHiss", value)
+                  onValueChange={([val]: number[]) =>
+                    handleEffectChange("tapeHiss", val)
                   }
                   className="w-full"
                 />
@@ -415,8 +362,8 @@ export const CreatePage = () => {
                   max={1}
                   step={0.01}
                   value={[effects.bitCrush]}
-                  onValueChange={([value]) =>
-                    handleEffectChange("bitCrush", value)
+                  onValueChange={([val]: number[]) =>
+                    handleEffectChange("bitCrush", val)
                   }
                   className="w-full"
                 />
@@ -439,8 +386,8 @@ export const CreatePage = () => {
                   max={1}
                   step={0.01}
                   value={[effects.reverb]}
-                  onValueChange={([value]) =>
-                    handleEffectChange("reverb", value)
+                  onValueChange={([val]: number[]) =>
+                    handleEffectChange("reverb", val)
                   }
                   className="w-full"
                 />
@@ -454,8 +401,8 @@ export const CreatePage = () => {
                   max={1}
                   step={0.01}
                   value={[effects.lowPass]}
-                  onValueChange={([value]) =>
-                    handleEffectChange("lowPass", value)
+                  onValueChange={([val]: number[]) =>
+                    handleEffectChange("lowPass", val)
                   }
                   className="w-full"
                 />
@@ -469,8 +416,8 @@ export const CreatePage = () => {
                   max={1.5}
                   step={0.01}
                   value={[effects.tempo]}
-                  onValueChange={([value]) =>
-                    handleEffectChange("tempo", value)
+                  onValueChange={([val]: number[]) =>
+                    handleEffectChange("tempo", val)
                   }
                   className="w-full"
                 />
@@ -485,8 +432,8 @@ export const CreatePage = () => {
                   max={1}
                   step={0.01}
                   value={[effects.backgroundReduction]}
-                  onValueChange={([value]) =>
-                    handleEffectChange("backgroundReduction", value)
+                  onValueChange={([val]: number[]) =>
+                    handleEffectChange("backgroundReduction", val)
                   }
                   className="w-full"
                 />
@@ -515,8 +462,8 @@ export const CreatePage = () => {
                   max={1}
                   step={0.01}
                   value={[effects.spatialX]}
-                  onValueChange={([value]) =>
-                    handleEffectChange("spatialX", value)
+                  onValueChange={([val]: number[]) =>
+                    handleEffectChange("spatialX", val)
                   }
                   className="w-full"
                 />
@@ -530,8 +477,8 @@ export const CreatePage = () => {
                   max={1}
                   step={0.01}
                   value={[effects.spatialY]}
-                  onValueChange={([value]) =>
-                    handleEffectChange("spatialY", value)
+                  onValueChange={([val]: number[]) =>
+                    handleEffectChange("spatialY", val)
                   }
                   className="w-full"
                 />
@@ -545,8 +492,8 @@ export const CreatePage = () => {
                   max={1}
                   step={0.01}
                   value={[effects.spatialZ]}
-                  onValueChange={([value]) =>
-                    handleEffectChange("spatialZ", value)
+                  onValueChange={([val]: number[]) =>
+                    handleEffectChange("spatialZ", val)
                   }
                   className="w-full"
                 />
@@ -560,8 +507,8 @@ export const CreatePage = () => {
                   max={1}
                   step={0.01}
                   value={[effects.compression]}
-                  onValueChange={([value]) =>
-                    handleEffectChange("compression", value)
+                  onValueChange={([val]: number[]) =>
+                    handleEffectChange("compression", val)
                   }
                   className="w-full"
                 />
@@ -585,8 +532,8 @@ export const CreatePage = () => {
                   max={1}
                   step={0.01}
                   value={[effects.pitchShift]}
-                  onValueChange={([value]) =>
-                    handleEffectChange("pitchShift", value)
+                  onValueChange={([val]: number[]) =>
+                    handleEffectChange("pitchShift", val)
                   }
                   className="w-full"
                 />
@@ -603,8 +550,8 @@ export const CreatePage = () => {
                   max={1}
                   step={0.01}
                   value={[effects.vocalReduction]}
-                  onValueChange={([value]) =>
-                    handleEffectChange("vocalReduction", value)
+                  onValueChange={([val]: number[]) =>
+                    handleEffectChange("vocalReduction", val)
                   }
                   className="w-full"
                 />
@@ -620,8 +567,8 @@ export const CreatePage = () => {
                   max={1}
                   step={0.01}
                   value={[effects.harmonics]}
-                  onValueChange={([value]) =>
-                    handleEffectChange("harmonics", value)
+                  onValueChange={([val]: number[]) =>
+                    handleEffectChange("harmonics", val)
                   }
                   className="w-full"
                 />
@@ -681,46 +628,6 @@ export const CreatePage = () => {
           </>
         )}
       </div>
-    </div>
+    </Layout>
   );
 };
-function createWavBuffer(audioData: Float32Array, sampleRate: number): Buffer {
-  const bytesPerSample = 2;
-  const buffer = new ArrayBuffer(44 + audioData.length * bytesPerSample);
-  const view = new DataView(buffer);
-
-  // Write WAV header
-  // "RIFF" chunk descriptor
-  writeString(view, 0, "RIFF");
-  view.setUint32(4, 36 + audioData.length * bytesPerSample, true);
-  writeString(view, 8, "WAVE");
-
-  // "fmt " sub-chunk
-  writeString(view, 12, "fmt ");
-  view.setUint32(16, 16, true); // fmt chunk size
-  view.setUint16(20, 1, true); // audio format (1 = PCM)
-  view.setUint16(22, 1, true); // number of channels
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * bytesPerSample, true); // byte rate
-  view.setUint16(32, bytesPerSample, true); // block align
-  view.setUint16(34, 16, true); // bits per sample
-
-  // "data" sub-chunk
-  writeString(view, 36, "data");
-  view.setUint32(40, audioData.length * bytesPerSample, true);
-
-  // Write audio data
-  const offset = 44;
-  for (let i = 0; i < audioData.length; i++) {
-    const sample = Math.max(-1, Math.min(1, audioData[i]));
-    view.setInt16(offset + i * bytesPerSample, sample * 0x7fff, true);
-  }
-
-  return Buffer.from(buffer);
-}
-
-function writeString(view: DataView, offset: number, string: string) {
-  for (let i = 0; i < string.length; i++) {
-    view.setUint8(offset + i, string.charCodeAt(i));
-  }
-}
