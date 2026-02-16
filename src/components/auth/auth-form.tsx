@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { supabase } from "@/lib/supabase";
-import { Loader2, AlertCircle, Github, Mail } from "lucide-react";
+import { useState } from "react";
+import { authClient } from "@/lib/auth-client";
+import { Loader2, AlertCircle, Github } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export const AuthForm = () => {
@@ -17,15 +17,10 @@ export const AuthForm = () => {
     setError(null);
 
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      await authClient.signIn.social({
         provider,
-        options: {
-          redirectTo: `${window.location.origin}/create`,
-          skipBrowserRedirect: false,
-        },
+        callbackURL: "/create",
       });
-
-      if (error) throw error;
     } catch (err) {
       setError(
         err instanceof Error
@@ -59,44 +54,25 @@ export const AuthForm = () => {
 
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { error: signUpError } = await authClient.signUp.email({
           email,
           password,
+          name: email.split("@")[0],
+          callbackURL: "/create",
         });
-        if (error) throw error;
+        if (signUpError) throw new Error(signUpError.message || "Failed to sign up");
         setError("Check your email to confirm your account");
       } else {
-        // Clear any previous errors
-        setError(null);
-        setValidationError(null);
-
-        if (!email || !password) {
-          throw new Error("Please enter both email and password");
-        }
-
-        const { error } = await supabase.auth.signInWithPassword({
+        const { error: signInError } = await authClient.signIn.email({
           email,
           password,
+          callbackURL: "/create",
         });
-        if (error) throw error;
+        if (signInError) throw new Error(signInError.message || "Invalid email or password");
         navigate("/create");
       }
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "An error occurred";
-
-      // Handle specific error cases
-      if (errorMessage.includes("invalid_credentials")) {
-        setError("Invalid email or password");
-      } else if (errorMessage.includes("user_already_exists")) {
-        setError("An account with this email already exists");
-      } else if (errorMessage.includes("weak_password")) {
-        setValidationError(
-          "Password is too weak. Please use at least 6 characters"
-        );
-      } else {
-        setError(errorMessage);
-      }
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setLoading(false);
     }
@@ -234,6 +210,3 @@ export const AuthForm = () => {
     </div>
   );
 };
-function useEffect(arg0: () => void, arg1: never[]) {
-  throw new Error("Function not implemented.");
-}
