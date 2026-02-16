@@ -15,7 +15,6 @@ export class LoFiProcessor {
   private compressor: Tone.Compressor;
   private pitchShift: Tone.PitchShift;
   private harmonicOscillator: Tone.Oscillator;
-  private isolateVocals: boolean = false;
 
   constructor() {
     // Initialize effects
@@ -102,7 +101,7 @@ export class LoFiProcessor {
   async loadFile(file: File): Promise<void> {
     const buffer = await file.arrayBuffer();
     const audioBuffer = await Tone.context.decodeAudioData(buffer);
-    
+
     if (this.player) {
       this.player.disconnect();
     }
@@ -113,9 +112,9 @@ export class LoFiProcessor {
 
   private updateEffectsChain() {
     if (!this.player) return;
-    
+
     this.player.disconnect();
-    
+
     // Standard lo-fi effects chain with background reduction
     this.player.chain(
       this.midEQ, // Apply background reduction first
@@ -166,7 +165,7 @@ export class LoFiProcessor {
     } else if (effects.harmonics === 0 && this.harmonicOscillator.state) {
       this.harmonicOscillator.stop();
     }
-    
+
     if (this.player) {
       this.player.playbackRate = effects.tempo;
     }
@@ -207,72 +206,151 @@ export class LoFiProcessor {
   }
 
   async exportLoFi(): Promise<Blob> {
-    return new Promise((resolve) => {
-      const chunks: BlobPart[] = [];
-      const dest = Tone.context.createMediaStreamDestination();
-      const offlineContext = new OfflineAudioContext(2, 44100 * 10, 44100);
-      
-      // Process audio faster using OfflineAudioContext
-      if (this.player) {
-        this.player.disconnect();
-        this.player.chain(
-          this.midEQ,
-          this.lowPass,
-          this.pitchShift,
-          this.panner,
-          this.compressor,
-          this.bitCrusher,
-          this.eq,
-          this.reverb,
-          this.gainNode,
-          dest
-        );
+    if (!this.player || !this.player.buffer) {
+      throw new Error("No audio loaded");
+    }
+
+    const originalBuffer = this.player.buffer;
+    const duration = originalBuffer.duration / this.player.playbackRate;
+
+    // Use Tone.Offline for deterministic, faster-than-real-time rendering
+    const renderedBuffer = await Tone.Offline(async () => {
+      const offlinePlayer = new Tone.Player(originalBuffer);
+      offlinePlayer.playbackRate = this.player!.playbackRate;
+
+      const offlineLowPass = new Tone.Filter({
+        type: 'lowpass',
+        frequency: this.lowPass.frequency.value,
+        rolloff: -24
+      }).toDestination();
+
+      const offlineReverb = new Tone.Reverb({
+        decay: Number(this.reverb.decay),
+        wet: this.reverb.wet.value
+      }).toDestination();
+
+      const offlineBitCrusher = new Tone.BitCrusher(
+        Number(this.bitCrusher.bits.value)
+      ).toDestination();
+
+      const offlineEQ = new Tone.EQ3({
+        low: this.eq.low.value,
+        mid: this.eq.mid.value,
+        high: this.eq.high.value
+      }).toDestination();
+
+      const offlineMidEQ = new Tone.EQ3({
+        low: this.midEQ.low.value,
+        mid: this.midEQ.mid.value,
+        high: this.midEQ.high.value,
+        lowFrequency: 200,
+        highFrequency: 2600
+      }).toDestination();
+
+      const offlinePanner = new Tone.Panner3D({
+        positionX: this.panner.positionX.value,
+        positionY: this.panner.positionY.value,
+        positionZ: this.panner.positionZ.value,
+      }).toDestination();
+
+      const offlineCompressor = new Tone.Compressor({
+        threshold: this.compressor.threshold.value,
+        ratio: this.compressor.ratio.value,
+        attack: 0.003,
+        release: 0.25,
+        knee: 30
+      }).toDestination();
+
+      const offlinePitchShift = new Tone.PitchShift({
+        pitch: this.pitchShift.pitch,
+      }).toDestination();
+
+      const offlineGain = new Tone.Gain(this.gainNode.gain.value).toDestination();
+
+      // Noise generators in offline context
+      const offlineVinyl = new Tone.Noise({
+        type: 'pink',
+        volume: this.vinylNoise.volume.value
+      }).connect(offlineGain);
+
+      const offlineHiss = new Tone.Noise({
+        type: 'white',
+        volume: this.tapeHiss.volume.value
+      }).connect(offlineGain);
+
+      offlinePlayer.chain(
+        offlineMidEQ,
+        offlineLowPass,
+        offlinePitchShift,
+        offlinePanner,
+        offlineCompressor,
+        offlineBitCrusher,
+        offlineEQ,
+        offlineReverb,
+        offlineGain
+      );
+
+      offlinePlayer.start(0);
+      offlineVinyl.start(0);
+      offlineHiss.start(0);
+    }, duration);
+
+    return this.audioBufferToWav(renderedBuffer.get()!);
+  }
+
+  private audioBufferToWav(buffer: AudioBuffer): Blob {
+    const numOfChan = buffer.numberOfChannels;
+    const length = buffer.length * numOfChan * 2 + 44;
+    const outBuffer = new ArrayBuffer(length);
+    const view = new DataView(outBuffer);
+    const channels = [];
+    let i;
+    let sample;
+    let offset = 0;
+    let pos = 0;
+
+    // write WAVE header
+    setUint32(0x46464952); // "RIFF"
+    setUint32(length - 8); // file length - 8
+    setUint32(0x45564157); // "WAVE"
+
+    setUint32(0x20746d66); // "fmt " chunk
+    setUint32(16); // length = 16
+    setUint16(1); // PCM (uncompressed)
+    setUint16(numOfChan);
+    setUint32(buffer.sampleRate);
+    setUint32(buffer.sampleRate * 2 * numOfChan); // avg. bytes/sec
+    setUint16(numOfChan * 2); // block-align
+    setUint16(16); // 16-bit (hardcoded)
+
+    setUint32(0x61746164); // "data" - chunk
+    setUint32(length - pos - 4); // chunk length
+
+    // write interleaved data
+    for (i = 0; i < buffer.numberOfChannels; i++) {
+      channels.push(buffer.getChannelData(i));
+    }
+
+    while (pos < length) {
+      for (i = 0; i < numOfChan; i++) { // interleave channels
+        sample = Math.max(-1, Math.min(1, channels[i][offset])); // clamp
+        sample = (sample < 0 ? sample * 0x8000 : sample * 0x7FFF) | 0; // scale to 16-bit signed int
+        view.setInt16(pos, sample, true); // write 16-bit sample
+        pos += 2;
       }
-      
-      // Connect noise generators
-      this.vinylNoise.disconnect();
-      this.tapeHiss.disconnect();
-      this.vinylNoise.connect(this.gainNode);
-      this.tapeHiss.connect(this.gainNode);
-      
-      this.gainNode.connect(dest);
-      
-      const mediaRecorder = new MediaRecorder(dest.stream);
-      
-      mediaRecorder.ondataavailable = (evt) => {
-        chunks.push(evt.data);
-      };
-      
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
-        
-        // Restore original connections
-        if (this.player) {
-          this.player.disconnect();
-          this.updateEffectsChain();
-        }
-        
-        if (!this.isolateVocals) {
-          this.vinylNoise.disconnect();
-          this.tapeHiss.disconnect();
-          this.vinylNoise.connect(this.gainNode);
-          this.tapeHiss.connect(this.gainNode);
-        }
-        
-        this.gainNode.toDestination();
-        
-        resolve(blob);
-      };
-      
-      // Start recording
-      mediaRecorder.start();
-      this.play();
-      
-      // Record for the duration of the audio
-      setTimeout(() => {
-        mediaRecorder.stop();
-        this.stop();
-      }, this.player ? this.player.buffer.duration * 1000 : 0);
-    });
+      offset++; // next source sample
+    }
+
+    return new Blob([outBuffer], { type: 'audio/wav' });
+
+    function setUint16(data: number) {
+      view.setUint16(pos, data, true);
+      pos += 2;
+    }
+
+    function setUint32(data: number) {
+      view.setUint32(pos, data, true);
+      pos += 4;
+    }
   }
 }
