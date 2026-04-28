@@ -8,27 +8,16 @@ import {
 } from "react-router-dom";
 import App from "./App.tsx";
 import { CreatePage } from "./pages/create.tsx";
-import { ProtectedRoute } from "./components/auth/protected-route";
-import { AuthProvider } from "./components/auth/auth-provider";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <Router>
-      <AuthProvider>
-        <Routes>
-          <Route path="/" element={<App />} />
-          <Route
-            path="/create"
-            element={
-              <ProtectedRoute>
-                <CreatePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AuthProvider>
+      <Routes>
+        <Route path="/" element={<App />} />
+        <Route path="/create" element={<CreatePage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </Router>
   </StrictMode>
 );
