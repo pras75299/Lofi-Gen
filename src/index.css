@@ -2,11 +2,220 @@
 @tailwind components;
 @tailwind utilities;
 
-@keyframes scroll {
-  from {
-    transform: translateX(0);
+@layer base {
+  :root {
+    --ease-out-soft:    cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out-soft: cubic-bezier(0.77, 0, 0.175, 1);
+
+    /* transitions-dev — semantic tokens shared by t-* snippets below */
+    --modal-open-dur: 250ms;
+    --modal-close-dur: 150ms;
+    --modal-scale: 0.96;
+    --modal-scale-close: 0.96;
+    --modal-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+    --icon-swap-dur: 200ms;
+    --icon-swap-blur: 2px;
+    --icon-swap-start-scale: 0.25;
+    --icon-swap-ease: ease-in-out;
+
+    --text-swap-dur: 200ms;
+    --text-swap-translate-y: 8px;
+    --text-swap-blur: 2px;
+    --text-swap-ease: ease-out;
   }
-  to {
-    transform: translateX(calc(-50% - 1rem));
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "ss01", "ss02", "cv01", "cv02";
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-paper text-ink font-sans;
+    background-image:
+      radial-gradient(1200px 600px at 80% -10%, rgba(200,98,74,0.08), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(92,115,85,0.10), transparent 60%);
+  }
+
+  ::selection {
+    background: #1A1714;
+    color: #F2EBE0;
+  }
+
+  /* Display headings — Fraunces with soft optical axis for the lo-fi feel */
+  h1, h2, h3 {
+    font-family: "Fraunces", ui-serif, Georgia, serif;
+    font-feature-settings: "ss01", "ss02";
+    font-variation-settings: "SOFT" 60, "opsz" 144;
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer components {
+  /* Subtle paper grain — SVG turbulence baked into a data URI */
+  .grain {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.10  0 0 0 0 0.09  0 0 0 0 0.08  0 0 0 0.18 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+
+  /* Hairline rules for editorial feel */
+  .rule {
+    @apply h-px w-full bg-line;
+  }
+
+  /* Number / spec label */
+  .spec {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    @apply text-[11px] uppercase tracking-[0.18em] text-ink-mute;
+  }
+
+  /* Underline that draws on hover */
+  .link-underline {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 0% 1px;
+    background-repeat: no-repeat;
+    background-position: 0 100%;
+    transition: background-size 240ms var(--ease-out-soft);
+  }
+  .link-underline:hover {
+    background-size: 100% 1px;
+  }
+
+  /* Tape reel — used in hero / loading */
+  .tape-reel {
+    @apply relative rounded-full border border-ink/20 bg-ink/5;
+    background-image:
+      conic-gradient(from 0deg, transparent 0deg 80deg, rgba(26,23,20,0.18) 80deg 90deg,
+                                transparent 90deg 170deg, rgba(26,23,20,0.18) 170deg 180deg,
+                                transparent 180deg 260deg, rgba(26,23,20,0.18) 260deg 270deg,
+                                transparent 270deg 350deg, rgba(26,23,20,0.18) 350deg 360deg);
+  }
+
+  /* Visual button-press feedback — scoped, not global */
+  .press {
+    transition: transform 160ms var(--ease-out-soft);
+  }
+  .press:active {
+    transform: scale(0.97);
+  }
+}
+
+/* ──────────────── transitions-dev snippets (verbatim) ──────────────── */
+
+/* Modal open / close */
+.t-modal {
+  transform-origin: center;
+  transform: scale(var(--modal-scale));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform var(--modal-open-dur) var(--modal-ease),
+    opacity   var(--modal-open-dur) var(--modal-ease);
+  will-change: transform, opacity;
+}
+.t-modal.is-open {
+  transform: scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+.t-modal.is-closing {
+  transform: scale(var(--modal-scale-close));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform var(--modal-close-dur) var(--modal-ease),
+    opacity   var(--modal-close-dur) var(--modal-ease);
+}
+
+/* Modal backdrop — fades alongside the surface */
+.t-modal-backdrop {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--modal-open-dur) var(--modal-ease);
+}
+.t-modal-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.t-modal-backdrop.is-closing {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--modal-close-dur) var(--modal-ease);
+}
+
+/* Icon swap */
+.t-icon-swap {
+  position: relative;
+  display: inline-grid;
+}
+.t-icon-swap .t-icon {
+  grid-area: 1 / 1;
+  transition:
+    opacity   var(--icon-swap-dur) var(--icon-swap-ease),
+    filter    var(--icon-swap-dur) var(--icon-swap-ease),
+    transform var(--icon-swap-dur) var(--icon-swap-ease);
+  will-change: opacity, filter, transform;
+}
+.t-icon-swap[data-state="a"] .t-icon[data-icon="a"],
+.t-icon-swap[data-state="b"] .t-icon[data-icon="b"] {
+  opacity: 1;
+  filter: blur(0);
+  transform: scale(1);
+}
+.t-icon-swap[data-state="a"] .t-icon[data-icon="b"],
+.t-icon-swap[data-state="b"] .t-icon[data-icon="a"] {
+  opacity: 0;
+  filter: blur(var(--icon-swap-blur));
+  transform: scale(var(--icon-swap-start-scale));
+}
+
+/* Text states swap */
+.t-text-swap {
+  display: inline-block;
+  transform: translateY(0);
+  filter: blur(0);
+  opacity: 1;
+  transition:
+    transform var(--text-swap-dur) var(--text-swap-ease),
+    filter    var(--text-swap-dur) var(--text-swap-ease),
+    opacity   var(--text-swap-dur) var(--text-swap-ease);
+  will-change: transform, filter, opacity;
+}
+.t-text-swap.is-exit {
+  transform: translateY(calc(var(--text-swap-translate-y) * -1));
+  filter: blur(var(--text-swap-blur));
+  opacity: 0;
+}
+.t-text-swap.is-enter-start {
+  transform: translateY(var(--text-swap-translate-y));
+  filter: blur(var(--text-swap-blur));
+  opacity: 0;
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-modal,
+  .t-modal-backdrop { transition: none !important; }
+  .t-icon-swap .t-icon { transition: none !important; }
+  .t-text-swap { transition: none !important; }
+}
+
+@keyframes scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(calc(-50% - 1rem)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
