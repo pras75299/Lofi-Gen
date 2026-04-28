@@ -1,23 +1,41 @@
 import * as Tone from 'tone';
 
+export type Effects = {
+  vinylCrackle: number;
+  tapeHiss: number;
+  bitCrush: number;
+  reverb: number;
+  lowPass: number;
+  tempo: number;
+  backgroundReduction: number;
+  stereoWidth: number;
+  wowFlutter: number;
+  compression: number;
+  pitchShift: number;
+  vocalReduction: number;
+  harmonics: number;
+};
+
 export class LoFiProcessor {
   private player: Tone.Player | null = null;
   private lowPass: Tone.Filter;
   private reverb: Tone.Reverb;
-  private midEQ: Tone.EQ3;
-  private backgroundReduction: number = 0;
+  private vocalEQ: Tone.EQ3;
+  private bgEQ: Tone.EQ3;
   private vinylNoise: Tone.Noise;
   private tapeHiss: Tone.Noise;
+  private noiseLowPass: Tone.Filter;
+  private noiseReverb: Tone.Reverb;
   private bitCrusher: Tone.BitCrusher;
   private eq: Tone.EQ3;
   private gainNode: Tone.Gain;
-  private panner: Tone.Panner3D;
+  private stereoWidener: Tone.StereoWidener;
   private compressor: Tone.Compressor;
   private pitchShift: Tone.PitchShift;
-  private harmonicOscillator: Tone.Oscillator;
+  private chebyshev: Tone.Chebyshev;
+  private vibrato: Tone.Vibrato;
 
   constructor() {
-    // Initialize effects
     this.lowPass = new Tone.Filter({
       type: 'lowpass',
       frequency: 2000,
@@ -49,8 +67,7 @@ export class LoFiProcessor {
       high: -2
     });
 
-    // EQ for background reduction
-    this.midEQ = new Tone.EQ3({
+    this.vocalEQ = new Tone.EQ3({
       low: 0,
       mid: 0,
       high: 0,
@@ -58,15 +75,16 @@ export class LoFiProcessor {
       highFrequency: 2600
     });
 
-    // Initialize spatial audio
-    this.panner = new Tone.Panner3D({
-      positionX: 0,
-      positionY: 0,
-      positionZ: 0,
-      rolloffFactor: 1,
+    this.bgEQ = new Tone.EQ3({
+      low: 0,
+      mid: 0,
+      high: 0,
+      lowFrequency: 150,
+      highFrequency: 4000
     });
 
-    // Initialize compressor for dynamic range control
+    this.stereoWidener = new Tone.StereoWidener(0.5);
+
     this.compressor = new Tone.Compressor({
       threshold: -24,
       ratio: 4,
@@ -75,27 +93,43 @@ export class LoFiProcessor {
       knee: 30
     });
 
-    // Initialize pitch shifter
     this.pitchShift = new Tone.PitchShift({
       pitch: 0,
       windowSize: 0.1,
       delayTime: 0,
       feedback: 0
     });
-    this.harmonicOscillator = new Tone.Oscillator({
-      frequency: 440, // Base frequency
-      type: 'sine', // Harmonic waveform
-      volume: -20,  // Default volume for harmonics
+
+    this.chebyshev = new Tone.Chebyshev({
+      order: 3,
+      wet: 0
+    });
+
+    // Tone.Vibrato gives steady wow/flutter via internal LFO; simpler than wiring an LFO to pitchShift.
+    this.vibrato = new Tone.Vibrato({
+      frequency: 2,
+      depth: 0,
+      wet: 0
     });
 
     this.gainNode = new Tone.Gain(0.8);
 
-    // Connect effects chain
-    this.vinylNoise.connect(this.gainNode);
-    this.tapeHiss.connect(this.gainNode);
-    this.gainNode.toDestination();
+    // Dedicated noise lowpass + reverb so noise sits in the same room as music without feedback cycles.
+    this.noiseLowPass = new Tone.Filter({
+      type: 'lowpass',
+      frequency: 2000,
+      rolloff: -24
+    });
 
-    this.harmonicOscillator.connect(this.gainNode);
+    this.noiseReverb = new Tone.Reverb({
+      decay: 1.5,
+      wet: 0.2
+    });
+
+    this.vinylNoise.chain(this.noiseLowPass, this.noiseReverb, this.gainNode);
+    this.tapeHiss.chain(this.noiseLowPass, this.noiseReverb, this.gainNode);
+
+    this.gainNode.toDestination();
   }
 
   async loadFile(file: File): Promise<void> {
@@ -103,7 +137,9 @@ export class LoFiProcessor {
     const audioBuffer = await Tone.context.decodeAudioData(buffer);
 
     if (this.player) {
+      this.player.stop();
       this.player.disconnect();
+      this.player.dispose();
     }
 
     this.player = new Tone.Player(audioBuffer);
@@ -115,77 +151,54 @@ export class LoFiProcessor {
 
     this.player.disconnect();
 
-    // Standard lo-fi effects chain with background reduction
     this.player.chain(
-      this.midEQ, // Apply background reduction first
+      this.bgEQ,
+      this.vocalEQ,
       this.lowPass,
       this.pitchShift,
-      this.panner,
+      this.vibrato,
+      this.stereoWidener,
       this.compressor,
       this.bitCrusher,
+      this.chebyshev,
       this.eq,
       this.reverb,
       this.gainNode
     );
-
-    // Update background reduction
-    this.midEQ.low.value = -this.backgroundReduction * 12;  // Reduce low frequencies
-    this.midEQ.high.value = -this.backgroundReduction * 8;  // Reduce high frequencies
-    this.midEQ.mid.value = this.backgroundReduction * 6;    // Boost mid frequencies (vocals)
   }
 
-  setEffects(effects: {
-    vinylCrackle: number;
-    tapeHiss: number;
-    bitCrush: number;
-    reverb: number;
-    lowPass: number;
-    tempo: number;
-    backgroundReduction: number;
-    spatialX: number;
-    spatialY: number;
-    spatialZ: number;
-    compression: number;
-    pitchShift: number;
-    vocalReduction: number;
-    harmonics: number;
-  }) {
+  setEffects(effects: Effects) {
     this.vinylNoise.volume.value = effects.vinylCrackle * -30 - 40;
     this.tapeHiss.volume.value = effects.tapeHiss * -30 - 50;
     this.bitCrusher.set({ bits: Math.floor(effects.bitCrush * 7 + 1) });
     this.reverb.wet.value = effects.reverb;
+    this.noiseReverb.wet.value = effects.reverb;
     this.lowPass.frequency.value = effects.lowPass * 3000 + 500;
-    this.midEQ.low.value = -effects.vocalReduction * 12;
-    this.midEQ.high.value = -effects.vocalReduction * 8;
-    this.midEQ.mid.value = effects.vocalReduction * 6;
+    this.noiseLowPass.frequency.value = effects.lowPass * 3000 + 500;
 
-    this.harmonicOscillator.volume.value = effects.harmonics * -30 - 20; // Adjust harmonic intensity
-    if (effects.harmonics > 0 && !this.harmonicOscillator.state) {
-      this.harmonicOscillator.start();
-    } else if (effects.harmonics === 0 && this.harmonicOscillator.state) {
-      this.harmonicOscillator.stop();
-    }
+    this.vocalEQ.low.value = 0;
+    this.vocalEQ.high.value = 0;
+    this.vocalEQ.mid.value = -effects.vocalReduction * 12;
+
+    this.bgEQ.low.value = -effects.backgroundReduction * 8;
+    this.bgEQ.high.value = -effects.backgroundReduction * 6;
+    this.bgEQ.mid.value = 0;
+
+    this.chebyshev.wet.value = effects.harmonics;
+
+    this.vibrato.depth.value = effects.wowFlutter * 0.5;
+    this.vibrato.wet.value = effects.wowFlutter;
 
     if (this.player) {
       this.player.playbackRate = effects.tempo;
     }
 
-    if (this.backgroundReduction !== effects.backgroundReduction) {
-      this.backgroundReduction = effects.backgroundReduction;
-      this.updateEffectsChain();
-    }
+    this.stereoWidener.width.value = effects.stereoWidth;
 
-    // Update spatial audio position
-    this.panner.positionX.value = effects.spatialX * 10 - 5; // Range: -5 to 5
-    this.panner.positionY.value = effects.spatialY * 10 - 5;
-    this.panner.positionZ.value = effects.spatialZ * 10 - 5;
+    this.compressor.threshold.value = -50 + effects.compression * 40;
+    this.compressor.ratio.value = 1 + effects.compression * 19;
 
-    // Update compressor settings
-    this.compressor.threshold.value = -50 + effects.compression * 40; // Range: -50 to -10
-    this.compressor.ratio.value = 1 + effects.compression * 19; // Range: 1 to 20
-
-    // Update pitch shift
-    this.pitchShift.pitch = effects.pitchShift * 24 - 12; // Range: -12 to 12 semitones
+    this.pitchShift.pitch = effects.pitchShift * 24 - 12;
   }
 
   async play() {
@@ -205,6 +218,32 @@ export class LoFiProcessor {
     }
   }
 
+  dispose() {
+    if (this.player) {
+      try { this.player.stop(); } catch { /* ignore */ }
+      this.player.dispose();
+      this.player = null;
+    }
+    try { this.vinylNoise.stop(); } catch { /* ignore */ }
+    try { this.tapeHiss.stop(); } catch { /* ignore */ }
+    this.vinylNoise.dispose();
+    this.tapeHiss.dispose();
+    this.noiseLowPass.dispose();
+    this.noiseReverb.dispose();
+    this.lowPass.dispose();
+    this.reverb.dispose();
+    this.vocalEQ.dispose();
+    this.bgEQ.dispose();
+    this.bitCrusher.dispose();
+    this.eq.dispose();
+    this.stereoWidener.dispose();
+    this.compressor.dispose();
+    this.pitchShift.dispose();
+    this.chebyshev.dispose();
+    this.vibrato.dispose();
+    this.gainNode.dispose();
+  }
+
   async exportLoFi(): Promise<Blob> {
     if (!this.player || !this.player.buffer) {
       throw new Error("No audio loaded");
@@ -213,82 +252,97 @@ export class LoFiProcessor {
     const originalBuffer = this.player.buffer;
     const duration = originalBuffer.duration / this.player.playbackRate;
 
-    // Use Tone.Offline for deterministic, faster-than-real-time rendering
+    const liveLowPassFreq = this.lowPass.frequency.value;
+    const liveReverbDecay = Number(this.reverb.decay);
+    const liveReverbWet = this.reverb.wet.value;
+    const liveBitCrusherBits = Number(this.bitCrusher.bits.value);
+    const liveEqLow = this.eq.low.value;
+    const liveEqMid = this.eq.mid.value;
+    const liveEqHigh = this.eq.high.value;
+    const liveVocalLow = this.vocalEQ.low.value;
+    const liveVocalMid = this.vocalEQ.mid.value;
+    const liveVocalHigh = this.vocalEQ.high.value;
+    const liveBgLow = this.bgEQ.low.value;
+    const liveBgMid = this.bgEQ.mid.value;
+    const liveBgHigh = this.bgEQ.high.value;
+    const liveStereoWidth = this.stereoWidener.width.value;
+    const liveCompThreshold = this.compressor.threshold.value;
+    const liveCompRatio = this.compressor.ratio.value;
+    const livePitch = this.pitchShift.pitch;
+    const liveChebyshevOrder = 3;
+    const liveChebyshevWet = this.chebyshev.wet.value;
+    const liveVibratoFreq = Number(this.vibrato.frequency.value);
+    const liveVibratoDepth = this.vibrato.depth.value;
+    const liveVibratoWet = this.vibrato.wet.value;
+    const liveGain = this.gainNode.gain.value;
+    const livePlaybackRate = this.player.playbackRate;
+    const liveVinylVol = this.vinylNoise.volume.value;
+    const liveHissVol = this.tapeHiss.volume.value;
+
     const renderedBuffer = await Tone.Offline(async () => {
-      const offlinePlayer = new Tone.Player(originalBuffer);
-      offlinePlayer.playbackRate = this.player!.playbackRate;
+      const offlineGain = new Tone.Gain(liveGain).toDestination();
 
-      const offlineLowPass = new Tone.Filter({
-        type: 'lowpass',
-        frequency: this.lowPass.frequency.value,
-        rolloff: -24
-      }).toDestination();
-
-      const offlineReverb = new Tone.Reverb({
-        decay: Number(this.reverb.decay),
-        wet: this.reverb.wet.value
-      }).toDestination();
-
-      const offlineBitCrusher = new Tone.BitCrusher(
-        Number(this.bitCrusher.bits.value)
-      ).toDestination();
-
-      const offlineEQ = new Tone.EQ3({
-        low: this.eq.low.value,
-        mid: this.eq.mid.value,
-        high: this.eq.high.value
-      }).toDestination();
-
-      const offlineMidEQ = new Tone.EQ3({
-        low: this.midEQ.low.value,
-        mid: this.midEQ.mid.value,
-        high: this.midEQ.high.value,
+      const offlineReverb = new Tone.Reverb({ decay: liveReverbDecay, wet: liveReverbWet });
+      const offlineLowPass = new Tone.Filter({ type: 'lowpass', frequency: liveLowPassFreq, rolloff: -24 });
+      const offlineBitCrusher = new Tone.BitCrusher(liveBitCrusherBits);
+      const offlineEQ = new Tone.EQ3({ low: liveEqLow, mid: liveEqMid, high: liveEqHigh });
+      const offlineVocalEQ = new Tone.EQ3({
+        low: liveVocalLow,
+        mid: liveVocalMid,
+        high: liveVocalHigh,
         lowFrequency: 200,
         highFrequency: 2600
-      }).toDestination();
-
-      const offlinePanner = new Tone.Panner3D({
-        positionX: this.panner.positionX.value,
-        positionY: this.panner.positionY.value,
-        positionZ: this.panner.positionZ.value,
-      }).toDestination();
-
+      });
+      const offlineBgEQ = new Tone.EQ3({
+        low: liveBgLow,
+        mid: liveBgMid,
+        high: liveBgHigh,
+        lowFrequency: 150,
+        highFrequency: 4000
+      });
+      const offlineStereoWidener = new Tone.StereoWidener(liveStereoWidth);
       const offlineCompressor = new Tone.Compressor({
-        threshold: this.compressor.threshold.value,
-        ratio: this.compressor.ratio.value,
+        threshold: liveCompThreshold,
+        ratio: liveCompRatio,
         attack: 0.003,
         release: 0.25,
         knee: 30
-      }).toDestination();
+      });
+      const offlinePitchShift = new Tone.PitchShift({ pitch: livePitch });
+      const offlineChebyshev = new Tone.Chebyshev({ order: liveChebyshevOrder, wet: liveChebyshevWet });
+      const offlineVibrato = new Tone.Vibrato({
+        frequency: liveVibratoFreq,
+        depth: liveVibratoDepth,
+        wet: liveVibratoWet
+      });
 
-      const offlinePitchShift = new Tone.PitchShift({
-        pitch: this.pitchShift.pitch,
-      }).toDestination();
+      // Duplicate noise lowpass+reverb so noise lives in the same space without creating a cycle into the music chain.
+      const offlineNoiseLowPass = new Tone.Filter({ type: 'lowpass', frequency: liveLowPassFreq, rolloff: -24 });
+      const offlineNoiseReverb = new Tone.Reverb({ decay: liveReverbDecay, wet: liveReverbWet });
 
-      const offlineGain = new Tone.Gain(this.gainNode.gain.value).toDestination();
-
-      // Noise generators in offline context
-      const offlineVinyl = new Tone.Noise({
-        type: 'pink',
-        volume: this.vinylNoise.volume.value
-      }).connect(offlineGain);
-
-      const offlineHiss = new Tone.Noise({
-        type: 'white',
-        volume: this.tapeHiss.volume.value
-      }).connect(offlineGain);
+      const offlinePlayer = new Tone.Player(originalBuffer);
+      offlinePlayer.playbackRate = livePlaybackRate;
 
       offlinePlayer.chain(
-        offlineMidEQ,
+        offlineBgEQ,
+        offlineVocalEQ,
         offlineLowPass,
         offlinePitchShift,
-        offlinePanner,
+        offlineVibrato,
+        offlineStereoWidener,
         offlineCompressor,
         offlineBitCrusher,
+        offlineChebyshev,
         offlineEQ,
         offlineReverb,
         offlineGain
       );
+
+      const offlineVinyl = new Tone.Noise({ type: 'pink', volume: liveVinylVol });
+      const offlineHiss = new Tone.Noise({ type: 'white', volume: liveHissVol });
+
+      offlineVinyl.chain(offlineNoiseLowPass, offlineNoiseReverb, offlineGain);
+      offlineHiss.chain(offlineNoiseLowPass, offlineNoiseReverb, offlineGain);
 
       offlinePlayer.start(0);
       offlineVinyl.start(0);
@@ -309,36 +363,34 @@ export class LoFiProcessor {
     let offset = 0;
     let pos = 0;
 
-    // write WAVE header
-    setUint32(0x46464952); // "RIFF"
-    setUint32(length - 8); // file length - 8
-    setUint32(0x45564157); // "WAVE"
+    setUint32(0x46464952);
+    setUint32(length - 8);
+    setUint32(0x45564157);
 
-    setUint32(0x20746d66); // "fmt " chunk
-    setUint32(16); // length = 16
-    setUint16(1); // PCM (uncompressed)
+    setUint32(0x20746d66);
+    setUint32(16);
+    setUint16(1);
     setUint16(numOfChan);
     setUint32(buffer.sampleRate);
-    setUint32(buffer.sampleRate * 2 * numOfChan); // avg. bytes/sec
-    setUint16(numOfChan * 2); // block-align
-    setUint16(16); // 16-bit (hardcoded)
+    setUint32(buffer.sampleRate * 2 * numOfChan);
+    setUint16(numOfChan * 2);
+    setUint16(16);
 
-    setUint32(0x61746164); // "data" - chunk
-    setUint32(length - pos - 4); // chunk length
+    setUint32(0x61746164);
+    setUint32(length - pos - 4);
 
-    // write interleaved data
     for (i = 0; i < buffer.numberOfChannels; i++) {
       channels.push(buffer.getChannelData(i));
     }
 
     while (pos < length) {
-      for (i = 0; i < numOfChan; i++) { // interleave channels
-        sample = Math.max(-1, Math.min(1, channels[i][offset])); // clamp
-        sample = (sample < 0 ? sample * 0x8000 : sample * 0x7FFF) | 0; // scale to 16-bit signed int
-        view.setInt16(pos, sample, true); // write 16-bit sample
+      for (i = 0; i < numOfChan; i++) {
+        sample = Math.max(-1, Math.min(1, channels[i][offset]));
+        sample = (sample < 0 ? sample * 0x8000 : sample * 0x7FFF) | 0;
+        view.setInt16(pos, sample, true);
         pos += 2;
       }
-      offset++; // next source sample
+      offset++;
     }
 
     return new Blob([outBuffer], { type: 'audio/wav' });

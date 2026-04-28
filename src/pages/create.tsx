@@ -15,13 +15,12 @@ import {
   CassetteTape,
 } from "lucide-react";
 import { WaveformVisualizer } from "@/components/audio/waveform-visualizer";
-import { LoFiProcessor } from "@/lib/audio-processor";
-import { supabase } from "@/lib/supabase";
+import { LoFiProcessor, type Effects } from "@/lib/audio-processor";
+import { listTracks, saveTrack } from "@/lib/local-library";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { TextSwap } from "@/components/ui/text-swap";
 import { Layout } from "@/components/layout/Layout";
-import { getLocalUserId } from "@/lib/local-user";
 import { cn } from "@/lib/utils";
 
 interface ConvertedFile {
@@ -31,23 +30,6 @@ interface ConvertedFile {
   createdAt: Date;
 }
 
-type Effects = {
-  vinylCrackle: number;
-  tapeHiss: number;
-  bitCrush: number;
-  reverb: number;
-  lowPass: number;
-  tempo: number;
-  backgroundReduction: number;
-  spatialX: number;
-  spatialY: number;
-  spatialZ: number;
-  compression: number;
-  pitchShift: number;
-  vocalReduction: number;
-  harmonics: number;
-};
-
 const DEFAULT_EFFECTS: Effects = {
   vinylCrackle: 1,
   tapeHiss: 1,
@@ -56,9 +38,8 @@ const DEFAULT_EFFECTS: Effects = {
   lowPass: 0.7,
   tempo: 1.0,
   backgroundReduction: 1,
-  spatialX: 0.5,
-  spatialY: 0.5,
-  spatialZ: 0.5,
+  stereoWidth: 0.5,
+  wowFlutter: 0,
   compression: 0.4,
   pitchShift: 0.5,
   vocalReduction: 1,
@@ -87,11 +68,29 @@ const PRESETS: Record<string, { label: string; spec: string; effects: Partial<Ef
     spec: "low-pass dream",
     effects: { vinylCrackle: 0.5, lowPass: 0.4, reverb: 0.75, tempo: 0.88, harmonics: 0.45 },
   },
+  amRadio: {
+    label: "AM Radio",
+    spec: "lo-bit · narrowcast",
+    effects: { vinylCrackle: 0.7, tapeHiss: 0.85, bitCrush: 0.65, lowPass: 0.3, harmonics: 0.6, stereoWidth: 0.15, reverb: 0.25 },
+  },
+  vhs: {
+    label: "VHS Hiss",
+    spec: "warbled tape",
+    effects: { vinylCrackle: 0.55, tapeHiss: 0.9, bitCrush: 0.3, lowPass: 0.55, tempo: 0.97, wowFlutter: 0.7, reverb: 0.4, harmonics: 0.55 },
+  },
+  underwater: {
+    label: "Underwater",
+    spec: "submerged · slow",
+    effects: { vinylCrackle: 0.3, tapeHiss: 0.4, lowPass: 0.25, tempo: 0.82, reverb: 0.85, wowFlutter: 0.35, harmonics: 0.4, stereoWidth: 0.7 },
+  },
+  boombox: {
+    label: "Boombox",
+    spec: "mono-leaning · warm",
+    effects: { vinylCrackle: 0.5, tapeHiss: 0.6, bitCrush: 0.45, lowPass: 0.5, tempo: 0.96, stereoWidth: 0.15, harmonics: 0.65, compression: 0.6 },
+  },
 };
 
 export const CreatePage = () => {
-  const userId = useMemo(() => getLocalUserId(), []);
-
   const [file, setFile] = useState<File | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,40 +101,35 @@ export const CreatePage = () => {
   const [effects, setEffects] = useState<Effects>(DEFAULT_EFFECTS);
 
   const processorRef = useRef<LoFiProcessor | null>(null);
+  const filesRef = useRef<ConvertedFile[]>([]);
+  filesRef.current = convertedFiles;
   const dragCounter = useRef(0);
   const [isDragOver, setIsDragOver] = useState(false);
 
-  // Cleanup processor on unmount
   useEffect(() => {
     return () => {
-      if (processorRef.current && "stop" in processorRef.current) {
-        processorRef.current.stop();
-      }
+      processorRef.current?.dispose();
+      filesRef.current.forEach((f) => URL.revokeObjectURL(f.convertedUrl));
     };
   }, []);
 
   const fetchConvertedFiles = useCallback(async () => {
-    const { data, error: queryError } = await supabase
-      .from("tracks")
-      .select("id, original_name, storage_url, created_at")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-
-    if (queryError) {
-      console.error("Error fetching files:", queryError);
+    try {
+      const tracks = await listTracks();
+      setConvertedFiles((prev) => {
+        prev.forEach((f) => URL.revokeObjectURL(f.convertedUrl));
+        return tracks.map((t) => ({
+          id: t.id,
+          originalName: t.originalName,
+          convertedUrl: URL.createObjectURL(t.blob),
+          createdAt: new Date(t.createdAt),
+        }));
+      });
+    } catch (err) {
+      console.error("Error fetching files:", err);
       setError("Failed to fetch your library.");
-      return;
     }
-
-    setConvertedFiles(
-      (data ?? []).map((t) => ({
-        id: t.id,
-        originalName: t.original_name,
-        convertedUrl: t.storage_url,
-        createdAt: new Date(t.created_at),
-      }))
-    );
-  }, [userId]);
+  }, []);
 
   useEffect(() => {
     fetchConvertedFiles();
@@ -208,6 +202,7 @@ export const CreatePage = () => {
     if (!processorRef.current || !file) return;
     const original = file.name;
     const stem = original.substring(0, original.lastIndexOf(".")) || original;
+    const fileName = `lofi-${stem}.wav`;
 
     try {
       setIsExporting(true);
@@ -216,36 +211,22 @@ export const CreatePage = () => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `lofi-${stem}.wav`;
+      link.download = fileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      const fileName = `processed/${Date.now()}-${crypto.randomUUID()}-${stem}.wav`;
-      const { error: uploadError } = await supabase.storage
-        .from("lofi-tracks")
-        .upload(fileName, blob, { contentType: "audio/wav" });
-      if (uploadError) {
-        console.error(uploadError);
-        setError("Saved locally — could not save to your library.");
-        return;
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("lofi-tracks")
-        .getPublicUrl(fileName);
-
-      const { error: insertError } = await supabase.from("tracks").insert({
-        user_id: userId,
-        original_name: original,
-        file_name: fileName,
-        storage_url: publicUrl,
-        effects: JSON.stringify(effects),
-      });
-      if (insertError) {
-        console.error(insertError);
-        setError("Saved locally — could not save to your library.");
+      try {
+        await saveTrack({
+          originalName: original,
+          fileName,
+          blob,
+          effects: JSON.stringify(effects),
+        });
+      } catch (err) {
+        console.error(err);
+        setError("Downloaded — could not add to your library.");
         return;
       }
 
@@ -255,7 +236,7 @@ export const CreatePage = () => {
     } finally {
       setIsExporting(false);
     }
-  }, [file, userId, effects, fetchConvertedFiles]);
+  }, [file, effects, fetchConvertedFiles]);
 
   const onDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -409,29 +390,13 @@ export const CreatePage = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <Section icon={Sparkles} label="Spatial field">
-                <KnobSlider
-                  label="Left / right"
-                  format={(v) => `${Math.round((v - 0.5) * 200)}`}
-                  value={effects.spatialX}
-                  onChange={(v) => handleEffectChange("spatialX", v)}
-                />
-                <KnobSlider
-                  label="Up / down"
-                  format={(v) => `${Math.round((v - 0.5) * 200)}`}
-                  value={effects.spatialY}
-                  onChange={(v) => handleEffectChange("spatialY", v)}
-                />
-                <KnobSlider
-                  label="Front / back"
-                  format={(v) => `${Math.round((v - 0.5) * 200)}`}
-                  value={effects.spatialZ}
-                  onChange={(v) => handleEffectChange("spatialZ", v)}
-                />
+              <Section icon={Sparkles} label="Stereo & Motion">
+                <KnobSlider label="Stereo width" unit="%" value={effects.stereoWidth} onChange={(v) => handleEffectChange("stereoWidth", v)} />
+                <KnobSlider label="Wow & flutter" unit="%" value={effects.wowFlutter} onChange={(v) => handleEffectChange("wowFlutter", v)} />
                 <KnobSlider label="Compression" unit="%" value={effects.compression} onChange={(v) => handleEffectChange("compression", v)} />
               </Section>
 
-              <Section icon={Sliders} label="Voice & Harmonic">
+              <Section icon={Sliders} label="Voice & Warmth">
                 <KnobSlider
                   label="Pitch shift"
                   format={(v) => `${Math.round((v - 0.5) * 24)} st`}
@@ -439,7 +404,7 @@ export const CreatePage = () => {
                   onChange={(v) => handleEffectChange("pitchShift", v)}
                 />
                 <KnobSlider label="Vocal reduction" unit="%" value={effects.vocalReduction} onChange={(v) => handleEffectChange("vocalReduction", v)} />
-                <KnobSlider label="Harmonics" unit="%" value={effects.harmonics} onChange={(v) => handleEffectChange("harmonics", v)} />
+                <KnobSlider label="Warmth" unit="%" value={effects.harmonics} onChange={(v) => handleEffectChange("harmonics", v)} />
               </Section>
             </div>
           </main>
