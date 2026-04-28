@@ -13,10 +13,11 @@ import {
   Loader2,
   FileAudio,
   CassetteTape,
+  Trash2,
 } from "lucide-react";
 import { WaveformVisualizer } from "@/components/audio/waveform-visualizer";
 import { LoFiProcessor, type Effects } from "@/lib/audio-processor";
-import { listTracks, saveTrack } from "@/lib/local-library";
+import { deleteTrack, listTracks, saveTrack } from "@/lib/local-library";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { TextSwap } from "@/components/ui/text-swap";
@@ -156,6 +157,19 @@ export const CreatePage = () => {
   }, []);
 
   const handleReset = useCallback(() => applyPreset("default"), [applyPreset]);
+
+  const handleDeleteTrack = useCallback(
+    async (id: string) => {
+      try {
+        await deleteTrack(id);
+        await fetchConvertedFiles();
+      } catch (err) {
+        console.error(err);
+        setError("Could not delete track from your library.");
+      }
+    },
+    [fetchConvertedFiles]
+  );
 
   const handleFileChange = useCallback(
     async (f: File) => {
@@ -338,11 +352,14 @@ export const CreatePage = () => {
                 <Section icon={CassetteTape} label="Library">
                   <ul className="space-y-1.5 -mx-1.5">
                     {convertedFiles.slice(0, 8).map((f) => (
-                      <li key={f.id}>
+                      <li
+                        key={f.id}
+                        className="group flex items-center gap-1 rounded-md px-2 py-1.5 hover:bg-cream transition-colors"
+                      >
                         <a
                           href={f.convertedUrl}
                           download
-                          className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 hover:bg-cream transition-colors group"
+                          className="flex min-w-0 flex-1 items-center justify-between gap-2"
                         >
                           <div className="min-w-0 flex-1">
                             <div className="truncate text-sm text-ink">{f.originalName}</div>
@@ -350,6 +367,14 @@ export const CreatePage = () => {
                           </div>
                           <Download className="h-3.5 w-3.5 text-ink-mute group-hover:text-ink transition-colors" />
                         </a>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTrack(f.id)}
+                          aria-label={`Delete ${f.originalName}`}
+                          className="rounded-md p-1 text-ink-mute/60 hover:text-sienna hover:bg-sienna/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+                        </button>
                       </li>
                     ))}
                   </ul>
