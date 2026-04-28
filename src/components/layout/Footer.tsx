@@ -1,53 +1,84 @@
-import { Music2 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export const Footer = () => {
   return (
-    <footer className="py-16 border-t border-[#997C70]/10 bg-white/30 backdrop-blur-sm">
-      <div className="container mx-auto px-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2 text-[#8EB486]">
-              <Music2 className="w-6 h-6" />
-              <span className="text-lg font-bold">LOFIGEN</span>
+    <footer className="relative mt-32 border-t border-line bg-paper">
+      <div className="mx-auto max-w-7xl px-6 md:px-10 py-20">
+        <div className="grid grid-cols-1 gap-16 md:grid-cols-12">
+          <div className="md:col-span-5">
+            <div className="font-display text-[clamp(2.5rem,7vw,4.5rem)] leading-[0.95] text-ink"
+                 style={{ fontVariationSettings: '"SOFT" 100, "opsz" 144, "wght" 400' }}>
+              Make your tracks<br />
+              <span className="italic text-sienna" style={{ fontVariationSettings: '"SOFT" 100, "opsz" 144, "wght" 400' }}>
+                feel like a memory.
+              </span>
             </div>
-            <p className="text-sm text-[#997C70] leading-relaxed">
-              Transform your audio into Lo-Fi masterpieces with authentic effects and customizable settings.
-            </p>
+            <div className="mt-10 flex items-center gap-3">
+              <div className="tape-reel h-3 w-3 animate-tape" />
+              <span className="spec">Recording in browser · No upload to server</span>
+            </div>
           </div>
-          
-          <div>
-            <h4 className="text-sm font-bold text-[#685752] uppercase tracking-wider mb-6">Product</h4>
-            <ul className="space-y-3 text-sm text-[#997C70]">
-              <li><a href="#features" className="hover:text-[#8EB486] transition-colors">Features</a></li>
-              <li><a href="/create" className="hover:text-[#8EB486] transition-colors">Create</a></li>
-            </ul>
-          </div>
-          
-          <div>
-            <h4 className="text-sm font-bold text-[#685752] uppercase tracking-wider mb-6">Resources</h4>
-            <ul className="space-y-3 text-sm text-[#997C70]">
-              <li><a href="#" className="hover:text-[#8EB486] transition-colors">Documentation</a></li>
-              <li><a href="#" className="hover:text-[#8EB486] transition-colors">Presets Guide</a></li>
-            </ul>
-          </div>
-          
-          <div>
-            <h4 className="text-sm font-bold text-[#685752] uppercase tracking-wider mb-6">Connect</h4>
-            <ul className="space-y-3 text-sm text-[#997C70]">
-              <li><a href="mailto:support@example.com" className="hover:text-[#8EB486] transition-colors">Email Support</a></li>
-              <li><a href="#" className="hover:text-[#8EB486] transition-colors">Twitter</a></li>
-            </ul>
+
+          <div className="md:col-span-7 grid grid-cols-2 sm:grid-cols-3 gap-8">
+            <FooterColumn
+              label="Studio"
+              links={[
+                { label: "Features", href: "/#features" },
+                { label: "Sound", href: "/#sound" },
+                { label: "Open the studio", href: "/create", isInternal: true },
+              ]}
+            />
+            <FooterColumn
+              label="Listen"
+              links={[
+                { label: "Presets", href: "/#presets" },
+                { label: "Voices", href: "/#voices" },
+              ]}
+            />
+            <FooterColumn
+              label="Project"
+              links={[
+                { label: "GitHub", href: "https://github.com" },
+                { label: "Contact", href: "mailto:hi@lofigen.app" },
+              ]}
+            />
           </div>
         </div>
-        
-        <div className="mt-16 pt-8 border-t border-[#997C70]/5 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0 text-sm text-[#997C70]">
-          <p>&copy; {new Date().getFullYear()} LOFIGEN. All rights reserved.</p>
-          <div className="flex space-x-6">
-            <a href="#" className="hover:text-[#8EB486] transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-[#8EB486] transition-colors">Terms of Service</a>
+
+        <div className="mt-20 flex flex-col-reverse gap-4 border-t border-line pt-8 md:flex-row md:items-center md:justify-between">
+          <p className="spec">© {new Date().getFullYear()} Lofigen — built with care.</p>
+          <div className="flex items-center gap-6 text-sm text-ink-mute">
+            <a href="#" className="link-underline hover:text-ink">Privacy</a>
+            <a href="#" className="link-underline hover:text-ink">Terms</a>
           </div>
         </div>
       </div>
     </footer>
   );
 };
+
+interface FooterColumnProps {
+  label: string;
+  links: { label: string; href: string; isInternal?: boolean }[];
+}
+
+const FooterColumn = ({ label, links }: FooterColumnProps) => (
+  <div>
+    <h4 className="spec mb-5">{label}</h4>
+    <ul className="space-y-3 text-sm text-ink-soft">
+      {links.map((link) => (
+        <li key={link.label}>
+          {link.isInternal ? (
+            <Link to={link.href} className="link-underline hover:text-ink">
+              {link.label}
+            </Link>
+          ) : (
+            <a href={link.href} className="link-underline hover:text-ink">
+              {link.label}
+            </a>
+          )}
+        </li>
+      ))}
+    </ul>
+  </div>
+);

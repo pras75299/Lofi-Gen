@@ -3,18 +3,18 @@ import { Footer } from "./Footer";
 
 interface LayoutProps {
   children: React.ReactNode;
-  onAuthClick?: () => void;
+  /** Hide footer on app-style pages (e.g. /create) */
+  bareFooter?: boolean;
 }
 
-export const Layout = ({ children, onAuthClick }: LayoutProps) => {
+export const Layout = ({ children, bareFooter }: LayoutProps) => {
   return (
-    <div className="min-h-screen flex flex-col bg-[#FDF7F4]">
-      <Navbar onAuthClick={onAuthClick} />
-      <main className="flex-grow pt-16">
+    <div className="relative min-h-screen flex flex-col bg-paper text-ink">
+      <Navbar />
+      <main className="flex-grow pt-[64px]">
         {children}
       </main>
-      <Footer />
+      {!bareFooter && <Footer />}
     </div>
   );
 };
-
