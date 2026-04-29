@@ -11,7 +11,6 @@ export const InfiniteMovingCards = ({
   items: {
     name: string;
     title: string;
-    image: string;
     quote: string;
   }[];
   direction?: "left" | "right";
@@ -24,14 +23,22 @@ export const InfiniteMovingCards = ({
   const [start, setStart] = useState(false);
 
   useEffect(() => {
-    if (containerRef.current && scrollerRef.current) {
-      Array.from(scrollerRef.current.children).forEach((item) => {
+    const scroller = scrollerRef.current;
+
+    if (containerRef.current && scroller) {
+      scroller.querySelectorAll("[data-clone='true']").forEach((node) => node.remove());
+      Array.from(scroller.children).forEach((item) => {
         const dup = item.cloneNode(true) as HTMLElement;
         dup.setAttribute("aria-hidden", "true");
-        scrollerRef.current!.appendChild(dup);
+        dup.dataset.clone = "true";
+        scroller.appendChild(dup);
       });
       setStart(true);
     }
+
+    return () => {
+      scroller?.querySelectorAll("[data-clone='true']").forEach((node) => node.remove());
+    };
   }, []);
 
   const duration = speed === "fast" ? "40s" : speed === "normal" ? "60s" : "90s";
@@ -75,13 +82,12 @@ export const InfiniteMovingCards = ({
                 &ldquo;{item.quote}&rdquo;
               </blockquote>
               <figcaption className="mt-6 flex items-center gap-3 pt-5 border-t border-line">
-                <img
-                  src={item.image}
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                  className="h-10 w-10 rounded-full object-cover ring-1 ring-line"
-                />
+                <div
+                  aria-hidden="true"
+                  className="grid h-10 w-10 place-items-center rounded-full bg-ochre/25 text-[12px] font-medium text-ink ring-1 ring-line"
+                >
+                  {getInitials(item.name)}
+                </div>
                 <div className="text-sm">
                   <div className="font-medium text-ink">{item.name}</div>
                   <div className="text-ink-mute text-[13px]">{item.title}</div>
@@ -94,3 +100,11 @@ export const InfiniteMovingCards = ({
     </div>
   );
 };
+
+const getInitials = (name: string) =>
+  name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");

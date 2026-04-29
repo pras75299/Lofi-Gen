@@ -3,7 +3,6 @@ import WaveSurfer from "wavesurfer.js";
 
 interface WaveformVisualizerProps {
   audioFile: File;
-  onReady?: () => void;
   height?: number;
   waveColor?: string;
   progressColor?: string;
@@ -11,7 +10,6 @@ interface WaveformVisualizerProps {
 
 export const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
   audioFile,
-  onReady,
   height = 100,
   waveColor = "#5D8736",
   progressColor = "#4A6C2B",
@@ -21,6 +19,7 @@ export const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
 
   useEffect(() => {
     if (!containerRef.current) return;
+    let cancelled = false;
 
     wavesurfer.current = WaveSurfer.create({
       container: containerRef.current,
@@ -33,19 +32,23 @@ export const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
       barRadius: 2,
     });
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      if (e.target?.result && wavesurfer.current) {
-        await wavesurfer.current.loadBlob(audioFile);
-        onReady?.();
+    void (async () => {
+      try {
+        await wavesurfer.current?.loadBlob(audioFile);
+      } catch {
+        if (!cancelled) {
+          wavesurfer.current?.destroy();
+          wavesurfer.current = null;
+        }
       }
-    };
-    reader.readAsArrayBuffer(audioFile);
+    })();
 
     return () => {
+      cancelled = true;
       wavesurfer.current?.destroy();
+      wavesurfer.current = null;
     };
-  }, [audioFile, height, waveColor, progressColor, onReady]);
+  }, [audioFile, height, waveColor, progressColor]);
 
   return <div ref={containerRef} />;
 };

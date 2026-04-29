@@ -48,8 +48,8 @@ export const Footer = () => {
         <div className="mt-20 flex flex-col-reverse gap-4 border-t border-line pt-8 md:flex-row md:items-center md:justify-between">
           <p className="spec">© {new Date().getFullYear()} Lofigen — built with care.</p>
           <div className="flex items-center gap-6 text-sm text-ink-mute">
-            <a href="#" className="link-underline hover:text-ink">Privacy</a>
-            <a href="#" className="link-underline hover:text-ink">Terms</a>
+            <span>Privacy policy coming soon</span>
+            <span>Terms coming soon</span>
           </div>
         </div>
       </div>

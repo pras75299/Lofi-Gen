@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 interface TextSwapProps {
   value: string;
   className?: string;
-  as?: "span" | "div";
 }
 
 /**
@@ -12,7 +11,7 @@ interface TextSwapProps {
  * mounted with on the first render; whenever `value` changes, runs the
  * three-phase exit / swap / enter sequence.
  */
-export const TextSwap = ({ value, className, as = "span" }: TextSwapProps) => {
+export const TextSwap = ({ value, className }: TextSwapProps) => {
   const ref = useRef<HTMLElement | null>(null);
   const previous = useRef(value);
 
@@ -37,10 +36,9 @@ export const TextSwap = ({ value, className, as = "span" }: TextSwapProps) => {
     return () => clearTimeout(timer);
   }, [value]);
 
-  const Tag = as as "span";
   return (
-    <Tag ref={ref as React.RefObject<HTMLSpanElement>} className={cn("t-text-swap", className)}>
+    <span ref={ref as React.RefObject<HTMLSpanElement>} className={cn("t-text-swap", className)}>
       {previous.current}
-    </Tag>
+    </span>
   );
 };
