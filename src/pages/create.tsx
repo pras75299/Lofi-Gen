@@ -16,7 +16,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { WaveformVisualizer } from "@/components/audio/waveform-visualizer";
-import { LoFiProcessor, type Effects } from "@/lib/audio-processor";
+import { LoFiProcessor, MAX_PITCH_SHIFT_SEMITONES, type Effects } from "@/lib/audio-processor";
 import { deleteTrack, listTracks, saveTrack } from "@/lib/local-library";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
@@ -27,24 +27,26 @@ import { cn } from "@/lib/utils";
 interface ConvertedFile {
   id: string;
   originalName: string;
+  fileName: string;
   convertedUrl: string;
   createdAt: Date;
 }
 
 const DEFAULT_EFFECTS: Effects = {
-  vinylCrackle: 1,
-  tapeHiss: 1,
-  bitCrush: 1,
-  reverb: 1,
-  lowPass: 0.7,
+  vinylCrackle: 0.28,
+  tapeHiss: 0.22,
+  bitCrush: 0.12,
+  reverb: 0.18,
+  lowPass: 0.38,
   tempo: 1.0,
-  backgroundReduction: 1,
-  stereoWidth: 0.5,
-  wowFlutter: 0,
-  compression: 0.4,
+  backgroundReduction: 0.18,
+  stereoWidth: 0.42,
+  wow: 0.14,
+  flutter: 0.1,
+  compression: 0.32,
   pitchShift: 0.5,
-  vocalReduction: 1,
-  harmonics: 0.5,
+  vocalReduction: 0.15,
+  harmonics: 0.38,
 };
 
 const PRESETS: Record<string, { label: string; spec: string; effects: Partial<Effects> }> = {
@@ -52,42 +54,42 @@ const PRESETS: Record<string, { label: string; spec: string; effects: Partial<Ef
   cafe: {
     label: "CassetteTape Café",
     spec: "warm · slow",
-    effects: { vinylCrackle: 0.6, tapeHiss: 0.7, lowPass: 0.55, tempo: 0.92, reverb: 0.45, harmonics: 0.6 },
+    effects: { vinylCrackle: 0.32, tapeHiss: 0.28, lowPass: 0.48, tempo: 0.94, reverb: 0.28, harmonics: 0.54, wow: 0.2, flutter: 0.12 },
   },
   bedroom: {
     label: "Late Bedroom",
     spec: "soft · 70bpm",
-    effects: { vinylCrackle: 0.4, tapeHiss: 0.55, lowPass: 0.5, tempo: 0.85, reverb: 0.65, vocalReduction: 0.3 },
+    effects: { vinylCrackle: 0.18, tapeHiss: 0.2, lowPass: 0.44, tempo: 0.88, reverb: 0.42, vocalReduction: 0.22, harmonics: 0.34, wow: 0.12, flutter: 0.08 },
   },
   rewind: {
     label: "Tape Rewind",
     spec: "wow & flutter",
-    effects: { vinylCrackle: 0.8, tapeHiss: 0.85, bitCrush: 0.55, lowPass: 0.65, tempo: 0.95, harmonics: 0.7 },
+    effects: { vinylCrackle: 0.46, tapeHiss: 0.42, bitCrush: 0.3, lowPass: 0.56, tempo: 0.95, harmonics: 0.62, wow: 0.42, flutter: 0.3 },
   },
   rain: {
     label: "Rainy Window",
     spec: "low-pass dream",
-    effects: { vinylCrackle: 0.5, lowPass: 0.4, reverb: 0.75, tempo: 0.88, harmonics: 0.45 },
+    effects: { vinylCrackle: 0.16, tapeHiss: 0.18, lowPass: 0.5, reverb: 0.56, tempo: 0.9, harmonics: 0.4, wow: 0.1, flutter: 0.06 },
   },
   amRadio: {
     label: "AM Radio",
     spec: "lo-bit · narrowcast",
-    effects: { vinylCrackle: 0.7, tapeHiss: 0.85, bitCrush: 0.65, lowPass: 0.3, harmonics: 0.6, stereoWidth: 0.15, reverb: 0.25 },
+    effects: { vinylCrackle: 0.4, tapeHiss: 0.44, bitCrush: 0.55, lowPass: 0.62, harmonics: 0.48, stereoWidth: 0.1, reverb: 0.12, backgroundReduction: 0.28 },
   },
   vhs: {
     label: "VHS Hiss",
     spec: "warbled tape",
-    effects: { vinylCrackle: 0.55, tapeHiss: 0.9, bitCrush: 0.3, lowPass: 0.55, tempo: 0.97, wowFlutter: 0.7, reverb: 0.4, harmonics: 0.55 },
+    effects: { vinylCrackle: 0.22, tapeHiss: 0.5, bitCrush: 0.16, lowPass: 0.46, tempo: 0.98, wow: 0.34, flutter: 0.38, reverb: 0.22, harmonics: 0.5 },
   },
   underwater: {
     label: "Underwater",
     spec: "submerged · slow",
-    effects: { vinylCrackle: 0.3, tapeHiss: 0.4, lowPass: 0.25, tempo: 0.82, reverb: 0.85, wowFlutter: 0.35, harmonics: 0.4, stereoWidth: 0.7 },
+    effects: { vinylCrackle: 0.08, tapeHiss: 0.14, lowPass: 0.76, tempo: 0.84, reverb: 0.66, wow: 0.24, flutter: 0.08, harmonics: 0.26, stereoWidth: 0.62 },
   },
   boombox: {
     label: "Boombox",
     spec: "mono-leaning · warm",
-    effects: { vinylCrackle: 0.5, tapeHiss: 0.6, bitCrush: 0.45, lowPass: 0.5, tempo: 0.96, stereoWidth: 0.15, harmonics: 0.65, compression: 0.6 },
+    effects: { vinylCrackle: 0.22, tapeHiss: 0.24, bitCrush: 0.2, lowPass: 0.42, tempo: 0.97, stereoWidth: 0.12, harmonics: 0.6, compression: 0.52, backgroundReduction: 0.22 },
   },
 };
 
@@ -114,6 +116,13 @@ export const CreatePage = () => {
     };
   }, []);
 
+  const clearLoadedFile = useCallback(() => {
+    processorRef.current?.dispose();
+    processorRef.current = null;
+    setIsPlaying(false);
+    setFile(null);
+  }, []);
+
   const fetchConvertedFiles = useCallback(async () => {
     try {
       const tracks = await listTracks();
@@ -122,6 +131,7 @@ export const CreatePage = () => {
         return tracks.map((t) => ({
           id: t.id,
           originalName: t.originalName,
+          fileName: t.fileName,
           convertedUrl: URL.createObjectURL(t.blob),
           createdAt: new Date(t.createdAt),
         }));
@@ -173,18 +183,24 @@ export const CreatePage = () => {
 
   const handleFileChange = useCallback(
     async (f: File) => {
+      const looksLikeAudio = f.type.startsWith("audio/") || /\.(mp3|wav|ogg|aac|m4a|flac)$/i.test(f.name);
+
       try {
-        if (!f.type.startsWith("audio/")) throw new Error("Please drop an audio file.");
+        if (!looksLikeAudio) throw new Error("Please drop an audio file.");
         const maxSize = 10 * 1024 * 1024;
         if (f.size > maxSize) throw new Error("File must be under 10 MB.");
 
         setIsLoading(true);
         setError(null);
+        setIsPlaying(false);
         setFile(f);
-        processorRef.current = new LoFiProcessor();
+        processorRef.current?.dispose();
+        processorRef.current = new LoFiProcessor(setIsPlaying);
         await processorRef.current.loadFile(f);
         processorRef.current.setEffects(effects);
       } catch (err) {
+        processorRef.current?.dispose();
+        processorRef.current = null;
         setError(err instanceof Error ? err.message : "Could not load file.");
         setFile(null);
       } finally {
@@ -207,9 +223,16 @@ export const CreatePage = () => {
 
   const togglePlayback = useCallback(() => {
     if (!processorRef.current) return;
-    if (isPlaying) processorRef.current.stop();
-    else processorRef.current.play();
-    setIsPlaying((p) => !p);
+    if (isPlaying) {
+      processorRef.current.stop();
+      return;
+    }
+
+    void processorRef.current.play().catch((err) => {
+      console.error(err);
+      setError("Could not start audio preview.");
+      setIsPlaying(false);
+    });
   }, [isPlaying]);
 
   const handleExport = useCallback(async () => {
@@ -236,7 +259,6 @@ export const CreatePage = () => {
           originalName: original,
           fileName,
           blob,
-          effects: JSON.stringify(effects),
         });
       } catch (err) {
         console.error(err);
@@ -250,7 +272,7 @@ export const CreatePage = () => {
     } finally {
       setIsExporting(false);
     }
-  }, [file, effects, fetchConvertedFiles]);
+  }, [file, fetchConvertedFiles]);
 
   const onDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -318,7 +340,7 @@ export const CreatePage = () => {
                   file={file}
                   isPlaying={isPlaying}
                   onToggle={togglePlayback}
-                  onReplace={() => setFile(null)}
+                  onReplace={clearLoadedFile}
                 />
               </motion.div>
             )}
@@ -341,7 +363,7 @@ export const CreatePage = () => {
                   />
                 ))}
                 {activePreset === "custom" && (
-                  <PresetButton active={true} label="Custom" spec="your tweaks" onClick={() => {}} />
+                  <PresetButton active={true} label="Custom" spec="your tweaks" />
                 )}
               </div>
             </Section>
@@ -358,7 +380,7 @@ export const CreatePage = () => {
                       >
                         <a
                           href={f.convertedUrl}
-                          download
+                          download={f.fileName}
                           className="flex min-w-0 flex-1 items-center justify-between gap-2"
                         >
                           <div className="min-w-0 flex-1">
@@ -417,14 +439,15 @@ export const CreatePage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <Section icon={Sparkles} label="Stereo & Motion">
                 <KnobSlider label="Stereo width" unit="%" value={effects.stereoWidth} onChange={(v) => handleEffectChange("stereoWidth", v)} />
-                <KnobSlider label="Wow & flutter" unit="%" value={effects.wowFlutter} onChange={(v) => handleEffectChange("wowFlutter", v)} />
+                <KnobSlider label="Wow" unit="%" value={effects.wow} onChange={(v) => handleEffectChange("wow", v)} />
+                <KnobSlider label="Flutter" unit="%" value={effects.flutter} onChange={(v) => handleEffectChange("flutter", v)} />
                 <KnobSlider label="Compression" unit="%" value={effects.compression} onChange={(v) => handleEffectChange("compression", v)} />
               </Section>
 
               <Section icon={Sliders} label="Voice & Warmth">
                 <KnobSlider
                   label="Pitch shift"
-                  format={(v) => `${Math.round((v - 0.5) * 24)} st`}
+                  format={(v) => `${Math.round((v - 0.5) * MAX_PITCH_SHIFT_SEMITONES * 2)} st`}
                   value={effects.pitchShift}
                   onChange={(v) => handleEffectChange("pitchShift", v)}
                 />
@@ -595,18 +618,20 @@ interface PresetButtonProps {
   active: boolean;
   label: string;
   spec: string;
-  onClick: () => void;
+  onClick?: () => void;
 }
 
 const PresetButton = ({ active, label, spec, onClick }: PresetButtonProps) => (
   <button
     type="button"
     onClick={onClick}
+    disabled={!onClick}
     aria-pressed={active}
     className={cn(
       "press group relative w-full rounded-lg px-3 py-2.5 text-left transition-colors duration-200 cursor-pointer",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-paper",
-      active ? "text-paper" : "text-ink hover:bg-cream"
+      active ? "text-paper" : "text-ink hover:bg-cream",
+      !onClick && "cursor-default"
     )}
   >
     {/* Layout-shared active background — slides between presets */}

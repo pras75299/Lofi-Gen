@@ -7,14 +7,23 @@ export type StoredTrack = {
   originalName: string;
   fileName: string;
   blob: Blob;
-  effects: string | null;
   createdAt: string;
 };
 
 let dbPromise: Promise<IDBDatabase> | null = null;
+let dbInstance: IDBDatabase | null = null;
+
+const resetDbState = () => {
+  dbPromise = null;
+  dbInstance = null;
+};
 
 const openDb = (): Promise<IDBDatabase> => {
   if (dbPromise) return dbPromise;
+  if (typeof indexedDB === "undefined") {
+    return Promise.reject(new Error("IndexedDB is not available in this browser."));
+  }
+
   dbPromise = new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, VERSION);
     req.onupgradeneeded = () => {
@@ -24,9 +33,23 @@ const openDb = (): Promise<IDBDatabase> => {
         store.createIndex("createdAt", "createdAt");
       }
     };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-    req.onblocked = () => reject(new Error("IndexedDB open blocked"));
+    req.onsuccess = () => {
+      dbInstance = req.result;
+      dbInstance.onclose = () => resetDbState();
+      dbInstance.onversionchange = () => {
+        dbInstance?.close();
+        resetDbState();
+      };
+      resolve(req.result);
+    };
+    req.onerror = () => {
+      resetDbState();
+      reject(req.error);
+    };
+    req.onblocked = () => {
+      resetDbState();
+      reject(new Error("IndexedDB open blocked"));
+    };
   });
   return dbPromise;
 };
@@ -35,7 +58,6 @@ export const saveTrack = async (input: {
   originalName: string;
   fileName: string;
   blob: Blob;
-  effects?: string | null;
 }): Promise<StoredTrack> => {
   const db = await openDb();
   const record: StoredTrack = {
@@ -43,7 +65,6 @@ export const saveTrack = async (input: {
     originalName: input.originalName,
     fileName: input.fileName,
     blob: input.blob,
-    effects: input.effects ?? null,
     createdAt: new Date().toISOString(),
   };
   await new Promise<void>((resolve, reject) => {
