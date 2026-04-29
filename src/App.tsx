@@ -51,31 +51,26 @@ const testimonials = [
   {
     name: "Sarah Chen",
     title: "Producer",
-    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop",
     quote: "I used to chain three plugins for this. Now I drop a stem in and it sounds like a memory in twelve seconds.",
   },
   {
     name: "Marcus Rodriguez",
     title: "Bedroom producer",
-    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop",
     quote: "The pitch and tape saturation together — that's the sound I've been hunting for since 2019.",
   },
   {
     name: "Emily Taylor",
     title: "Creator",
-    image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop",
     quote: "The vinyl crackle isn't a loop. You can hear it. It actually breathes with the track.",
   },
   {
     name: "Alex Kim",
     title: "Student",
-    image: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&h=400&fit=crop",
     quote: "Made my entire study playlist over a weekend. Friends keep asking where I'm getting these.",
   },
   {
     name: "Jordan Lee",
     title: "Indie artist",
-    image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop",
     quote: "The downloads sound finished. Not a demo, not a draft — finished.",
   },
 ];
